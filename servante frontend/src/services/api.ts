@@ -178,4 +178,25 @@ export const borrowsAPI = {
   }
 };
 
+// ============================================
+// UPLOAD API
+// ============================================
+export const uploadAPI = {
+  uploadImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const response = await axios.post(
+      `${API_URL}/upload/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  }
+};
+
 export default api;

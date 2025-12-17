@@ -68,7 +68,7 @@ import logo from './images/emines_logo.png';
 // ============================================
 // IMPORTS - API Backend
 // ============================================
-import { authAPI, toolsAPI, borrowsAPI, usersAPI  } from './services/api';
+import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI } from './services/api';
 import { useEffect } from 'react';
 
 // ============================================
@@ -150,7 +150,6 @@ type Screen =
   | 'admin-overview'
   | 'admin-tools-analysis'
   | 'admin-users-analysis'
-  | 'admin-inventory'
   | 'return-tool'
   | 'user-account' 
   |'admin-manage-users'    
@@ -159,6 +158,37 @@ type SortOption = 'default' | 'name-asc' | 'name-desc' | 'category';
 type AvailabilityFilter = 'all' | 'available' | 'borrowed';
 type ViewMode = 'grid' | 'list';
 
+
+// ============================================
+// TOOL NAME TRANSLATION KEY MAPPING
+// ============================================
+const toolNameToKeyMap: Record<string, string> = {
+  'Tournevis Plat Grand': 'tool.tournevisPlatGrand',
+  'Tournevis Plat Moyen': 'tool.tournevisPlatMoyen',
+  'Tournevis Plat Petit': 'tool.tournevisPlatPetit',
+  'Tournevis Plat Mini': 'tool.tournevisPlatMini',
+  'Tournevis Américain Grand': 'tool.tournevisAmericainGrand',
+  'Tournevis Américain Moyen': 'tool.tournevisAmericainMoyen',
+  'Tournevis Américain Petit': 'tool.tournevisAmericainPetit',
+  'Tournevis Américain Mini': 'tool.tournevisAmericainMini',
+  'Clé à Molette': 'tool.cleMolette',
+  'Jeu de Clés Six Pans Coudées': 'tool.jeuClesSixPansCoudees',
+  'Jeu de Clés Six Pans Droites': 'tool.jeuClesSixPansDroites',
+  'Jeu de Clés en Étoile': 'tool.jeuClesEmpreinteEtoile',
+  'Pince Électronique de Précision': 'tool.pinceElectronique',
+  'Mini Pince Coupante': 'tool.miniPinceCoupante',
+  'Mini Pince Bec Demi-Rond Coudé': 'tool.miniPinceBecDemiRondCoude',
+  'Mini Pince Bec Demi-Rond': 'tool.miniPinceBecDemiRond',
+  'Mini Pince Bec Plat': 'tool.miniPinceBecPlat',
+  'Pointe à Tracer': 'tool.pointeATracer',
+  'Pointeau Automatique': 'tool.pointeauAutomatique',
+  'Ciseaux': 'tool.ciseaux',
+  'Cutteur': 'tool.cutteur',
+};
+
+const getToolTranslationKey = (toolName: string): string => {
+  return toolNameToKeyMap[toolName] || `tool.${toolName.toLowerCase().replace(/\s+/g, '')}`;
+};
 
 // ============================================
 // HELPER FUNCTIONS - Calcul des retards
@@ -441,7 +471,7 @@ const LanguageSelector: React.FC = () => {
       </button>
       
       {langMenuOpen && (
-        <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute left-0 mt-2 w-44 bg-white rounded-xl shadow-lg overflow-hidden z-50">
           <button
             className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm"
             onClick={() => { 
@@ -600,14 +630,13 @@ const AdminSidebar: React.FC<{
     { id: 'admin-overview', icon: <TrendingUp className="w-5 h-5" />, label: t('overview') },
     { id: 'admin-tools-analysis', icon: <Package className="w-5 h-5" />, label: t('toolsAnalysis') },
     { id: 'admin-users-analysis', icon: <Users className="w-5 h-5" />, label: t('usersAnalysis') },
-    { id: 'admin-inventory', icon: <Box className="w-5 h-5" />, label: t('inventory') },
     
     // Séparateur
     { separator: true },
     
     // Gestion (NOUVEAU)
-    { id: 'admin-manage-users', icon: <User className="w-5 h-5" />, label: ' Gestion Utilisateurs' },
-    { id: 'admin-manage-tools', icon: <Wrench className="w-5 h-5" />, label: ' Gestion Outils' },
+    { id: 'admin-manage-users', icon: <User className="w-5 h-5" />, label: t('manageUsers') },
+    { id: 'admin-manage-tools', icon: <Wrench className="w-5 h-5" />, label: t('manageTools') },
   ];
 
   return (
@@ -690,7 +719,7 @@ const AdminBorrowFilters: React.FC<{
         {/* Recherche par nom */}
         <div>
           <label className="block text-sm font-bold text-slate-700 mb-2">
-            Rechercher un utilisateur
+            {t('usersManagement')}
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -698,7 +727,7 @@ const AdminBorrowFilters: React.FC<{
               type="text"
               value={filters.searchUser}
               onChange={(e) => setFilters({ ...filters, searchUser: e.target.value })}
-              placeholder="Nom de l'utilisateur..."
+              placeholder={t('usernamePlaceholder')}
               className="w-full pl-10 pr-4 py-2 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
@@ -707,36 +736,36 @@ const AdminBorrowFilters: React.FC<{
         {/* Filtre par statut */}
         <div>
           <label className="block text-sm font-bold text-slate-700 mb-2">
-            Statut
+            {t('status')}
           </label>
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
             className="w-full px-4 py-2 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
-            <option value="all">Tous les statuts</option>
-            <option value="active">Actifs</option>
-            <option value="overdue"> En retard</option>
-            <option value="due-soon"> Bientôt en retard</option>
-            <option value="returned"> Retournés</option>
+            <option value="all">{t('allStatus')}</option>
+            <option value="active">{t('active')}</option>
+            <option value="overdue">{t('overdue')}</option>
+            <option value="due-soon">{t('dueSoon')}</option>
+            <option value="returned">{t('returned')}</option>
           </select>
         </div>
 
         {/* Filtre par tiroir */}
         <div>
           <label className="block text-sm font-bold text-slate-700 mb-2">
-            Tiroir
+            {t('drawer')}
           </label>
           <select
             value={filters.drawer}
             onChange={(e) => setFilters({ ...filters, drawer: e.target.value as any })}
             className="w-full px-4 py-2 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
-            <option value="all">Tous les tiroirs</option>
-            <option value="1">Tiroir 1 - Tournevis</option>
-            <option value="2">Tiroir 2 - Clés</option>
-            <option value="3">Tiroir 3 - Pinces</option>
-            <option value="4">Tiroir 4 - Marquage & Coupe</option>
+            <option value="all">{t('allDrawers')}</option>
+            <option value="1">{t('drawer1')}</option>
+            <option value="2">{t('drawer2')}</option>
+            <option value="3">{t('drawer3')}</option>
+            <option value="4">{t('drawer4')}</option>
           </select>
         </div>
 
@@ -799,7 +828,7 @@ const AdminBorrowsTable: React.FC<{
             )}
             {dueSoonBorrows.length > 0 && (
               <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full font-semibold">
-                 {dueSoonBorrows.length} bientôt en retard
+                 {dueSoonBorrows.length} {t('dueSoon')}
               </span>
             )}
           </div>
@@ -821,9 +850,9 @@ const AdminBorrowsTable: React.FC<{
                   'Date emprunt': new Date(b.borrowDate).toLocaleDateString('fr-FR'),
                   'Date limite': new Date(b.dueDate).toLocaleDateString('fr-FR'),
                   'Date retour': b.returnDate ? new Date(b.returnDate).toLocaleDateString('fr-FR') : '-',
-                  'Statut': status.status === 'overdue' ? 'En retard' : 
-                           status.isDueSoon ? 'Bientôt en retard' : 
-                           b.status === 'returned' ? 'Retourné' : 'Actif',
+                  'Statut': status.status === 'overdue' ? t('overdue') : 
+                           status.isDueSoon ? t('dueSoon') : 
+                           b.status === 'returned' ? t('returned') : t('active'),
                   'Jours de retard': status.daysLate || 0,
                   'Jours restants': status.daysUntilDue || '-'
                 };
@@ -846,13 +875,13 @@ const AdminBorrowsTable: React.FC<{
         <table className="w-full">
           <thead className="bg-slate-50 border-b-2 border-slate-200">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-bold text-slate-700">Utilisateur</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-slate-700">Outil</th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">Tiroir</th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">Date emprunt</th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">Date limite</th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">Statut</th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">Actions</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-slate-700">{t('user')}</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-slate-700">{t('tool')}</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">{t('drawer')}</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">{t('borrowDate')}</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">{t('dueDate')}</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">{t('status')}</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -901,11 +930,11 @@ const AdminBorrowsTable: React.FC<{
                       </span>
                     ) : borrow.status === 'returned' ? (
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                         Retourné
+                         {t('returned')}
                       </span>
                     ) : (
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                        ✓ Actif
+                        ✓ {t('active')}
                       </span>
                     )}
                   </td>
@@ -933,7 +962,7 @@ const AdminBorrowsTable: React.FC<{
       {borrows.length === 0 && (
         <div className="text-center py-12">
           <History className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-600">Aucun emprunt ne correspond aux filtres</p>
+          <p className="text-slate-600">{t('noBorrowsMatch')}</p>
         </div>
       )}
     </div>
@@ -953,6 +982,8 @@ export default function App() {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
  const [tools, setTools] = useState<Tool[]>([]);
 const [loading, setLoading] = useState(true);
@@ -977,6 +1008,7 @@ const [userModalMode, setUserModalMode] = useState<ModalMode>('create');
 const [selectedToolForEdit, setSelectedToolForEdit] = useState<Tool | null>(null);
 const [toolModalOpen, setToolModalOpen] = useState(false);
 const [toolModalMode, setToolModalMode] = useState<ModalMode>('create');
+const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   // ✅ États pour les filtres admin
   const [adminFilters, setAdminFilters] = useState<AdminBorrowFilter>({
@@ -1022,6 +1054,27 @@ const loadBorrowsFromBackend = async () => {
     setAllBorrows([]);
   } finally {
     setBorrowsLoading(false);
+  }
+};
+
+// ============================================
+// FONCTION - Upload d'image
+// ============================================
+const handleImageUpload = async (file: File) => {
+  try {
+    console.log('📤 Upload fichier:', file.name);
+    const result = await uploadAPI.uploadImage(file);
+    
+    if (result.success) {
+      setUploadedImageUrl(result.data.imageUrl);
+      console.log('✅ Image uploadée:', result.data.imageUrl);
+      alert(`✅ Image uploadée: ${file.name}`);
+    } else {
+      alert(`❌ ${result.message}`);
+    }
+  } catch (error: any) {
+    console.error('❌ Erreur upload:', error);
+    alert(`❌ Erreur: ${error.message}`);
   }
 };
 
@@ -1129,7 +1182,7 @@ const reloadBorrows = async () => {
   let filteredTools = tools.filter(tool => {
     const matchesCategory = selectedCategory === ALL_CATEGORIES || tool.category === selectedCategory;
     const matchesSearch = 
-      t(tool.name).toLowerCase().includes(searchQuery.toLowerCase()) || 
+      t(getToolTranslationKey(tool.name)).toLowerCase().includes(searchQuery.toLowerCase()) || 
       t(tool.category).toLowerCase().includes(searchQuery.toLowerCase()) ||
       (tool.size && tool.size.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesAvailability = 
@@ -1223,7 +1276,7 @@ const borrowedCount = tools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0
   // Feuille 1: Liste des outils
   const toolsData = tools.map(tool => ({
     'ID': tool.id,
-    'Outil': t(tool.name),
+    'Outil': t(getToolTranslationKey(tool.name)),
     'Catégorie': t(tool.category),
     'Taille': tool.size || '-',
     'Tiroir': tool.drawer || '-',
@@ -1281,11 +1334,11 @@ const handleBadgeScan = async () => {
       setCurrentUser(result.data.user);
       setCurrentScreen('tool-selection');
     } else {
-      alert('Badge invalide');
+      alert(t('invalidBadge'));
     }
   } catch (error) {
     console.error('❌ Erreur login:', error);
-    alert('Erreur de connexion au serveur');
+    alert(t('connectionError'));
   } finally {
     setLoading(false);
   }
@@ -1350,7 +1403,7 @@ if (currentScreen === 'tool-selection') {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-navy mb-4"></div>
-          <p className="text-lg text-slate-700 font-semibold">Chargement...</p>
+          <p className="text-lg text-slate-700 font-semibold">{t('loading')}</p>
         </div>
       </div>
     );
@@ -1362,7 +1415,7 @@ if (currentScreen === 'tool-selection') {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-navy mb-4"></div>
-          <p className="text-lg text-slate-700 font-semibold">Chargement des outils...</p>
+          <p className="text-lg text-slate-700 font-semibold">{t('loading')}</p>
         </div>
       </div>
     );
@@ -1414,7 +1467,7 @@ if (currentScreen === 'tool-selection') {
             </div>
             <button 
               onClick={() => setCurrentScreen('return-tool')} 
-              className="px-4 md:px-6 py-2.5 rounded-lg bg-white text-slate-900 flex items-center gap-2 hover:bg-slate-100 transition-all shadow-md text-sm md:text-base border-2 border-slate-900 whitespace-nowrap -mr-20"
+              className="px-4 md:px-6 py-2.5 rounded-lg bg-blue-900 text-white flex items-center gap-2 hover:bg-blue-900 transition-all shadow-md text-sm md:text-base whitespace-nowrap -mr-20 font-semibold"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">{t('returnTool')}</span>
@@ -1522,7 +1575,7 @@ if (currentScreen === 'tool-selection') {
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide flex items-center gap-2">
                       <Wrench className="w-5 h-5 text-slate-700" />
-                      Catégories
+                      {t('category')}
                     </h3>
                     <div className="space-y-2 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
                       <button 
@@ -1669,14 +1722,14 @@ className={`group p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition
                     <div className="w-36 h-36 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center mb-4 overflow-hidden shadow-sm group-hover:shadow-md transition-all">
                       <img 
                         src={tool.image} 
-                        alt={t(tool.name)}
+                        alt={t(getToolTranslationKey(tool.name))}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
                       />
                     </div>
                     
                     <div className="w-full space-y-2 mb-4">
                       <h3 className="font-bold text-slate-900 text-center text-base leading-tight">
-                        {t(tool.name)}
+                        {t(getToolTranslationKey(tool.name))}
                       </h3>
                       <p className="text-sm text-slate-600 text-center font-medium">
                         {t(tool.category)}
@@ -1735,11 +1788,11 @@ className={`group p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition
         }`}
       >
         <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-          <img src={tool.image} alt={t(tool.name)} className="w-full h-full object-cover" />
+          <img src={tool.image} alt={t(getToolTranslationKey(tool.name))} className="w-full h-full object-cover" />
         </div>
         
         <div className="flex-1">
-          <h3 className="font-bold text-slate-900 text-xl mb-2">{t(tool.name)}</h3>
+          <h3 className="font-bold text-slate-900 text-xl mb-2">{t(getToolTranslationKey(tool.name))}</h3>
           <p className="text-sm text-slate-600 font-medium mb-3">{t(tool.category)}</p>
           <div className="flex items-center gap-4 text-sm text-slate-500">
             {tool.size && (
@@ -1793,7 +1846,7 @@ if (currentScreen === 'confirm-borrow') {
   // ✅ FONCTION POUR GÉRER L'EMPRUNT OU LE RETOUR
   const handleConfirmAction = async () => {
     if (!selectedTool || !currentUser) {
-      alert('❌ Erreur: Outil ou utilisateur manquant');
+      alert(`❌ ${t('noToolOrUserError')}`);
       return;
     }
 
@@ -1809,14 +1862,14 @@ if (currentScreen === 'confirm-borrow') {
         );
 
         if (!activeBorrow) {
-          alert('❌ Aucun emprunt actif trouvé pour cet outil');
+          alert(`❌ ${t('noBorrowFound')}`);
           return;
         }
 
         const result = await borrowsAPI.markAsReturned(activeBorrow.id);
         
         if (result.success) {
-          alert(`✅ ${selectedTool.name} retourné avec succès!`);
+          alert(`✅ ${selectedTool.name} ${t('returnSuccess')}!`);
           // Recharger les données
           await loadBorrowsFromBackend();
           await loadToolsFromBackend();
@@ -1824,7 +1877,7 @@ if (currentScreen === 'confirm-borrow') {
           setIsReturnMode(false);
           setCurrentScreen('tool-selection');
         } else {
-          alert('❌ Erreur lors du retour');
+          alert(`❌ ${t('returnError')}`);
         }
       } else {
         // ✅ MODE EMPRUNT - Créer un nouvel emprunt
@@ -1837,19 +1890,19 @@ if (currentScreen === 'confirm-borrow') {
         const result = await borrowsAPI.borrow(currentUser.id, selectedTool.id, 1);
         
         if (result.success) {
-          alert(`✅ ${selectedTool.name} emprunté avec succès!`);
+          alert(`✅ ${selectedTool.name} ${t('borrowSuccess')}!`);
           // Recharger les données
           await loadBorrowsFromBackend();
           await loadToolsFromBackend();
           setSelectedTool(null);
           setCurrentScreen('tool-selection');
         } else {
-          alert('❌ Erreur lors de l\'emprunt');
+          alert(`❌ ${t('borrowError')}`);
         }
       }
     } catch (error: any) {
       console.error('❌ Erreur:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de l\'opération';
+      const errorMessage = error.response?.data?.message || error.message || t('operationError');
       alert(`❌ ${errorMessage}`);
     } finally {
       setLoading(false);
@@ -2054,12 +2107,12 @@ if (currentScreen === 'user-account') {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-red-900 mb-2">
-                  {overdueBorrows.length} outil{overdueBorrows.length > 1 ? 's' : ''} en retard
+                  {overdueBorrows.length} {overdueBorrows.length > 1 ? t('toolsLate') : t('toolsLate')}
                 </h3>
                 <ul className="space-y-2">
                   {overdueBorrows.map(b => (
                     <li key={b.id} className="text-sm text-red-700">
-                      <strong>{b.toolName}</strong> - En retard de <strong>{b.daysLate} jour{b.daysLate > 1 ? 's' : ''}</strong>
+                      <strong>{b.toolName}</strong> - {t('overdue')} de <strong>{b.daysLate} {b.daysLate > 1 ? t('days') : t('days')}</strong>
                     </li>
                   ))}
                 </ul>
@@ -2202,11 +2255,11 @@ if (currentScreen === 'user-account') {
                         <h4 className="font-bold text-slate-900">{borrow.toolName}</h4>
                         <p className="text-sm text-slate-600">
                           {t('borrowed')}: {new Date(borrow.borrowDate).toLocaleDateString('fr-FR')} - 
-                          Tiroir {borrow.drawer}
+                          {t('drawer')} {borrow.drawer}
                         </p>
                         {borrow.status === 'overdue' && (
                           <p className="text-sm font-bold text-red-600">
-                            ⚠️ En retard de {borrow.daysLate} jour{borrow.daysLate > 1 ? 's' : ''}
+                            ⚠️ {t('overdue')} de {borrow.daysLate} {borrow.daysLate > 1 ? t('days') : t('days')}
                           </p>
                         )}
                         {borrow.isDueSoon && (
@@ -2351,7 +2404,11 @@ if (currentScreen === 'user-account') {
         
         <div className="max-w-md w-full p-8 rounded-2xl bg-white shadow-xl border border-slate-200 relative">
           <button 
-            onClick={() => setCurrentScreen('badge-scan')} 
+            onClick={() => {
+              setCurrentScreen('badge-scan');
+              setLoginError('');
+              setPassword('');
+            }} 
             className="absolute top-4 right-4 p-2 rounded-xl hover:bg-slate-100 transition-all"
           >
             <X className="w-5 h-5 text-slate-600" />
@@ -2365,22 +2422,58 @@ if (currentScreen === 'user-account') {
             <p className="text-sm text-slate-600 mt-2">{t('adminPassword')}</p>
           </div>
 
+          {/* Notification d'erreur */}
+          {loginError && (
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm font-semibold text-red-600">{loginError}</p>
+            </div>
+          )}
+
           <div className="mb-6">
             <label className="block text-sm font-bold text-slate-700 mb-3">{t('password')}</label>
-            <input 
-              type="password" 
-              value={password} 
-              onChange={handlePasswordChange} 
-              placeholder={t('password')} 
-              className="w-full px-5 py-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-[#0f2b56] focus:outline-none transition-all font-medium" 
-              autoComplete="off"
-            />
+            <div className="relative">
+              <input 
+                type={showPassword ? 'text' : 'password'}
+                value={password} 
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setLoginError('');
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    if (password === 'admin123') {
+                      setPassword('');
+                      setLoginError('');
+                      setCurrentScreen('admin-overview');
+                    } else {
+                      setLoginError(t('incorrectPassword'));
+                    }
+                  }
+                }}
+                placeholder={t('password')} 
+                className="w-full px-5 py-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-[#0f2b56] focus:outline-none transition-all font-medium pr-12" 
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                {showPassword ? (
+                  <Eye className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="flex gap-3">
             <button 
               onClick={() => { 
                 setPassword(''); 
+                setLoginError('');
                 setCurrentScreen('badge-scan'); 
               }} 
               className="flex-1 px-6 py-4 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all font-bold text-slate-700 shadow-md"
@@ -2392,7 +2485,10 @@ if (currentScreen === 'user-account') {
               onClick={() => { 
                 if (password === 'admin123') { 
                   setPassword(''); 
+                  setLoginError('');
                   setCurrentScreen('admin-overview'); 
+                } else {
+                  setLoginError(`❌ ${t('incorrectPassword')}`);
                 }
               }} 
               className="flex-1 px-6 py-4 rounded-xl bg-[#0f2b56] hover:bg-[#0a1f3d] text-white transition-all font-bold shadow-lg"
@@ -2451,25 +2547,45 @@ const calculateOverviewStats = (tools: Tool[], borrows: BorrowRecord[]) => {
 }; // ← ACCOLADE FERMANTE AJOUTÉE
 
 const calculateMonthlyTrend = (borrows: BorrowRecord[]) => {
-  const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'];
+  // ✅ Noms des mois en français
+  const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+  
   const monthlyData = [];
   const now = new Date();
   
+  console.log(' Date actuelle:', now.toLocaleDateString('fr-FR'));
+  console.log(' Total emprunts à analyser:', borrows.length);
+  
+  // ✅ Boucler sur les 6 derniers mois (incluant le mois actuel)
   for (let i = 5; i >= 0; i--) {
-    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthName = months[5 - i];
+    // Calculer le premier jour du mois
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    // Calculer le premier jour du mois suivant
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
     
+    // Nom du mois
+    const monthName = monthNames[monthStart.getMonth()];
+    
+    // ✅ Filtrer les emprunts de ce mois
     const monthBorrows = borrows.filter(b => {
       const borrowDate = new Date(b.borrowDate);
-      return borrowDate.getMonth() === monthDate.getMonth() &&
-             borrowDate.getFullYear() === monthDate.getFullYear();
+      return borrowDate >= monthStart && borrowDate < monthEnd;
     });
     
+    // ✅ Filtrer les retours de ce mois
     const monthReturns = borrows.filter(b => {
       if (!b.returnDate) return false;
       const returnDate = new Date(b.returnDate);
-      return returnDate.getMonth() === monthDate.getMonth() &&
-             returnDate.getFullYear() === monthDate.getFullYear();
+      return returnDate >= monthStart && returnDate < monthEnd;
+    });
+    
+    console.log(` ${monthName} ${monthStart.getFullYear()} (${monthStart.toLocaleDateString('fr-FR')} → ${monthEnd.toLocaleDateString('fr-FR')}):`, {
+      emprunts: monthBorrows.length,
+      retours: monthReturns.length,
+      empruntsDetails: monthBorrows.map(b => ({
+        outil: b.toolName,
+        date: new Date(b.borrowDate).toLocaleDateString('fr-FR')
+      }))
     });
     
     monthlyData.push({
@@ -2479,16 +2595,18 @@ const calculateMonthlyTrend = (borrows: BorrowRecord[]) => {
     });
   }
   
+  console.log(' Tendance finale:', monthlyData);
   return monthlyData;
-}; // ← ACCOLADE FERMANTE AJOUTÉE
+};
+
 
 const calculateCategoryDistribution = (tools: Tool[]) => {
   const categories = {
-    'category.tournevis': { name: 'Tournevis', count: 0, color: COLORS.chart1 },
-    'category.cles': { name: 'Clés', count: 0, color: COLORS.chart2 },
-    'category.pinces': { name: 'Pinces', count: 0, color: COLORS.chart3 },
-    'category.marquage': { name: 'Marquage', count: 0, color: COLORS.chart4 },
-    'category.coupe': { name: 'Coupe', count: 0, color: COLORS.chart5 }
+    'Tournevis': { name: 'Tournevis', count: 0, color: COLORS.chart1 },
+    'Clés': { name: 'Clés', count: 0, color: COLORS.chart2 },
+    'Pinces': { name: 'Pinces', count: 0, color: COLORS.chart3 },
+    'Outils de marquage': { name: 'Marquage', count: 0, color: COLORS.chart4 },
+    'Outils de coupe': { name: 'Coupe', count: 0, color: COLORS.chart5 }
   };
   
   tools.forEach(tool => {
@@ -2501,24 +2619,26 @@ const calculateCategoryDistribution = (tools: Tool[]) => {
     name: cat.name,
     value: cat.count,
     color: cat.color
-  }));
-}; // ← ACCOLADE FERMANTE AJOUTÉE
+  })).filter(cat => cat.value > 0);
+};
 
 const calculateUsageByCategory = (tools: Tool[], borrows: BorrowRecord[]) => {
   const categoryUsage: { [key: string]: { name: string, emprunts: number, value: number } } = {
-    'category.tournevis': { name: 'Tournevis', emprunts: 0, value: 0 },
-    'category.cles': { name: 'Clés', emprunts: 0, value: 0 },
-    'category.pinces': { name: 'Pinces', emprunts: 0, value: 0 },
-    'category.marquage': { name: 'Marquage', emprunts: 0, value: 0 },
-    'category.coupe': { name: 'Coupe', emprunts: 0, value: 0 }
+    'Tournevis': { name: 'Tournevis', emprunts: 0, value: 0 },
+    'Clés': { name: 'Clés', emprunts: 0, value: 0 },
+    'Pinces': { name: 'Pinces', emprunts: 0, value: 0 },
+    'Outils de marquage': { name: 'Outils de marquage', emprunts: 0, value: 0 },
+    'Outils de coupe': { name: 'Outils de coupe', emprunts: 0, value: 0 }
   };
   
+  // ✅ CORRECTION: Compter le nombre d'outils par catégorie
   tools.forEach(tool => {
     if (categoryUsage[tool.category]) {
       categoryUsage[tool.category].value += tool.totalQuantity;
     }
   });
   
+  // ✅ CORRECTION: Compter les emprunts par catégorie
   borrows.forEach(borrow => {
     const tool = tools.find(t => t.id === borrow.toolId);
     if (tool && categoryUsage[tool.category]) {
@@ -2526,8 +2646,11 @@ const calculateUsageByCategory = (tools: Tool[], borrows: BorrowRecord[]) => {
     }
   });
   
+  // ✅ AFFICHER DANS LA CONSOLE POUR DEBUG
+  console.log('📊 Usage par catégorie:', categoryUsage);
+  
   return Object.values(categoryUsage);
-}; // ← ACCOLADE FERMANTE AJOUTÉE
+};
 
 const calculateInsights = (tools: Tool[], borrows: BorrowRecord[]) => {
   const overviewStats = calculateOverviewStats(tools, borrows);
@@ -2546,17 +2669,23 @@ const calculateInsights = (tools: Tool[], borrows: BorrowRecord[]) => {
     cat.value > max.value ? cat : max
   , categoryDist[0]);
   
-  const popularPercent = Math.round((mostPopularCategory.value / overviewStats.totalTools) * 100);
-  const criticalStock = tools.filter(t => t.availableQuantity === 0).length;
+  // ✅ CORRECTION: Calculer le vrai pourcentage de popularité
+  const totalTools = tools.reduce((sum, t) => sum + t.totalQuantity, 0);
+  const popularPercent = totalTools > 0 
+    ? Math.round((mostPopularCategory.value / totalTools) * 100) 
+    : 0;
+  
+  // ✅ CORRECTION: Compter les outils actuellement empruntés (pas le stock critique)
+  const currentlyBorrowed = tools.reduce((sum, t) => sum + t.borrowedQuantity, 0);
   
   return {
     userGrowth: overviewStats.userGrowth,
     mostPopularCategory: mostPopularCategory.name,
     popularPercent,
     onTimeRate,
-    criticalStock
+    criticalStock: currentlyBorrowed  // ✅ CORRIGÉ
   };
-}; // ← ACCOLADE FERMANTE AJOUTÉE
+};
 
 // ✅ ÉCRAN 6 - Analyse Outils
 const calculateToolsAnalysisStats = (tools: Tool[], borrows: BorrowRecord[]) => {
@@ -2576,17 +2705,60 @@ const calculateToolsAnalysisStats = (tools: Tool[], borrows: BorrowRecord[]) => 
     ? (totalDuration / returnedBorrows.length).toFixed(1) 
     : '0.0';
   
+  // ✅ NOUVEAU CRITÈRE: Outils avec ≥75% emprunté ET en retard
   const now = new Date();
-  const maintenanceNeeded = borrows.filter(b => {
-    if (b.status === 'returned') return false;
-    const daysBorrowed = Math.ceil((now.getTime() - new Date(b.borrowDate).getTime()) / (1000 * 60 * 60 * 24));
-    return daysBorrowed > 7;
-  }).length;
+  const toolsNeedingMaintenance = tools.filter(tool => {
+    // Vérifier si au moins 75% du stock est emprunté
+    const usagePercent = tool.totalQuantity > 0 
+      ? (tool.borrowedQuantity / tool.totalQuantity) * 100 
+      : 0;
+    
+    if (usagePercent < 75) {
+      return false; // Moins de 75% emprunté
+    }
+    
+    // Vérifier si au moins un emprunt de cet outil est en retard
+    const toolBorrows = borrows.filter(b => 
+      b.toolId === tool.id && 
+      (b.status === 'active' || b.status === 'overdue')
+    );
+    
+    const hasOverdueBorrow = toolBorrows.some(b => {
+      const dueDate = new Date(b.dueDate);
+      return now > dueDate; // En retard
+    });
+    
+    return hasOverdueBorrow;
+  });
   
-  const lastMonthUsageRate = Math.round(usageRate * 0.95);
+  const maintenanceNeeded = toolsNeedingMaintenance.length;
+  
+  // ✅ CALCUL DES TENDANCES (mois dernier vs maintenant)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  
+  // Taux d'utilisation du mois dernier
+  const lastMonthBorrows = borrows.filter(b => {
+    const date = new Date(b.borrowDate);
+    return date >= sixtyDaysAgo && date < thirtyDaysAgo;
+  });
+  const lastMonthBorrowedCount = lastMonthBorrows.length;
+  const lastMonthUsageRate = totalTools > 0 
+    ? Math.round((lastMonthBorrowedCount / totalTools) * 100) 
+    : 0;
   const usageRateTrend = usageRate - lastMonthUsageRate;
   
-  const lastMonthAvgDuration = parseFloat(avgDuration) * 1.05;
+  // Durée moyenne du mois dernier
+  const lastMonthReturned = lastMonthBorrows.filter(b => b.returnDate);
+  const lastMonthTotalDuration = lastMonthReturned.reduce((sum, b) => {
+    const duration = (new Date(b.returnDate!).getTime() - new Date(b.borrowDate).getTime()) / (1000 * 60 * 60 * 24);
+    return sum + duration;
+  }, 0);
+  const lastMonthAvgDuration = lastMonthReturned.length > 0 
+    ? lastMonthTotalDuration / lastMonthReturned.length 
+    : parseFloat(avgDuration);
   const avgDurationTrend = parseFloat(avgDuration) - lastMonthAvgDuration;
   
   return {
@@ -2594,23 +2766,11 @@ const calculateToolsAnalysisStats = (tools: Tool[], borrows: BorrowRecord[]) => 
     usageRateTrend,
     avgDuration,
     avgDurationTrend,
-    maintenanceNeeded
+    maintenanceNeeded,
+    toolsNeedingMaintenance  // ✅ AJOUT: Liste des outils
   };
-}; // ← ACCOLADE FERMANTE AJOUTÉE
+};
 
-// ✅ ÉCRAN 8 - Inventaire
-const calculateInventoryAlerts = (tools: Tool[]) => {
-  const criticalTools = tools.filter(t => 
-    t.availableQuantity === 0 && t.totalQuantity > 0
-  );
-  
-  const maintenanceTools = tools.filter(t => t.borrowedQuantity > 3);
-  
-  return {
-    criticalTools,
-    maintenanceTools
-  };
-}; // ← ACCOLADE FERMANTE AJOUTÉE
 
 // ✅ ÉCRAN 7 - Analyse Utilisateurs
 const calculateUserStats = (borrows: BorrowRecord[]) => {
@@ -2704,9 +2864,17 @@ if (currentScreen === 'admin-overview') {
   const overviewStats = calculateOverviewStats(tools, allBorrows);
   const monthlyTrendDataDynamic = calculateMonthlyTrend(allBorrows);
   const categoryDistributionDynamic = calculateCategoryDistribution(tools);
+
+// ✅ DEBUG: Afficher les catégories des outils
+console.log('🔍 TOUTES LES CATÉGORIES DES OUTILS:');
+tools.forEach(tool => {
+  console.log(`- ${tool.name}: "${tool.category}"`);
+});
+console.log('📊 Résultat distribution:', categoryDistributionDynamic);
   const usageDataDynamic = calculateUsageByCategory(tools, allBorrows);
   const insights = calculateInsights(tools, allBorrows);
 
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <Logo />
@@ -2804,34 +2972,49 @@ if (currentScreen === 'admin-overview') {
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-navy">{t('categoryDistribution')}</h3>
-                <p className="text-sm text-gray-600">{t('toolDistribution')}</p>
-              </div>
-              <PieChartIcon className="w-6 h-6 text-purple-500" />
-            </div>
-            
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={categoryDistributionDynamic}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryDistributionDynamic.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+  <div className="flex items-center justify-between mb-6">
+    <div>
+      <h3 className="text-lg font-bold text-navy">{t('categoryDistribution')}</h3>
+      <p className="text-sm text-gray-600">{t('toolDistribution')}</p>
+    </div>
+    <PieChartIcon className="w-6 h-6 text-purple-500" />
+  </div>
+  
+  <ResponsiveContainer width="100%" height={280}>
+    <BarChart data={categoryDistributionDynamic}>
+      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+      <XAxis dataKey="name" stroke="#666" />
+      <YAxis stroke="#666" />
+      <Tooltip 
+        contentStyle={{ 
+          backgroundColor: 'white', 
+          border: '1px solid #ddd',
+          borderRadius: '8px'
+        }} 
+      />
+      <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+        {categoryDistributionDynamic.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={entry.color} />
+        ))}
+      </Bar>
+    </BarChart>
+  </ResponsiveContainer>
+  
+  <div className="mt-4 grid grid-cols-2 gap-2">
+    {categoryDistributionDynamic.map((cat, idx) => (
+      <div key={idx} className="flex items-center gap-2 text-sm">
+        <div 
+          className="w-4 h-4 rounded" 
+          style={{ backgroundColor: cat.color }}
+        ></div>
+        <span className="text-slate-700">
+          <strong>{cat.name}:</strong> {cat.value} outil{cat.value > 1 ? 's' : ''}
+        </span>
+      </div>
+    ))}
+  </div>
+</div>
+                 
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
@@ -2860,35 +3043,34 @@ if (currentScreen === 'admin-overview') {
           </ResponsiveContainer>
         </div>
 
-        {/* ✅ Insights automatiques - 100% DYNAMIQUES */}
         <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-white rounded-xl">
-              <AlertCircle className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-navy mb-2">Insights automatiques</h3>
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li>
-                  • <strong>{insights.userGrowth >= 0 ? 'Croissance positive' : 'Baisse'}</strong>: 
-                  {' '}{insights.userGrowth > 0 ? '+' : ''}{insights.userGrowth}% d'utilisateurs actifs
-                </li>
-                <li>
-                  • <strong>Catégorie populaire</strong>: 
-                  {' '}{insights.mostPopularCategory} ({insights.popularPercent}%)
-                </li>
-                <li>
-                  • <strong>Taux de retour à temps</strong>: 
-                  {' '}{insights.onTimeRate}%
-                </li>
-                <li>
-                  • <strong>Stock critique</strong>: 
-                  {' '}{insights.criticalStock} outil{insights.criticalStock > 1 ? 's' : ''} actuellement emprunté{insights.criticalStock > 1 ? 's' : ''}
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+  <div className="flex items-start gap-4">
+    <div className="p-3 bg-white rounded-xl">
+      <AlertCircle className="w-6 h-6 text-blue-600" />
+    </div>
+    <div>
+      <h3 className="text-lg font-bold text-navy mb-2">💡 Insights automatiques</h3>
+      <ul className="space-y-2 text-sm text-gray-700">
+        <li>
+          • <strong>{insights.userGrowth >= 0 ? 'Croissance positive' : 'Baisse'}</strong>: 
+          {' '}{insights.userGrowth > 0 ? '+' : ''}{insights.userGrowth}% d'utilisateurs actifs
+        </li>
+        <li>
+          • <strong>Catégorie populaire</strong>: 
+          {' '}{insights.mostPopularCategory} ({insights.popularPercent}% du stock total)
+        </li>
+        <li>
+          • <strong>Taux de retour à temps</strong>: 
+          {' '}{insights.onTimeRate}%
+        </li>
+        <li>
+          • <strong>Outils actuellement empruntés</strong>: 
+          {' '}{insights.criticalStock} outil{insights.criticalStock > 1 ? 's' : ''} en cours d'utilisation
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
       </div>
     </div>
   );
@@ -2902,6 +3084,51 @@ if (currentScreen === 'admin-overview') {
 if (currentScreen === 'admin-tools-analysis') {
   // ✅ Calculer les statistiques dynamiquement
   const toolsStats = calculateToolsAnalysisStats(tools, allBorrows);
+
+  {/* ✅ ALERTE: Outils nécessitant maintenance */}
+{toolsStats.toolsNeedingMaintenance && toolsStats.toolsNeedingMaintenance.length > 0 && (
+  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-200 mb-8">
+    <div className="flex items-start gap-4">
+      <div className="p-3 bg-white rounded-xl">
+        <AlertCircle className="w-6 h-6 text-orange-600" />
+      </div>
+      <div className="flex-1">
+        <h3 className="text-lg font-bold text-orange-900 mb-2">
+          ⚠️ {toolsStats.toolsNeedingMaintenance.length} outil{toolsStats.toolsNeedingMaintenance.length > 1 ? 's' : ''} nécessite{toolsStats.toolsNeedingMaintenance.length > 1 ? 'nt' : ''} une maintenance
+        </h3>
+        <p className="text-sm text-orange-700 mb-3">
+          Ces outils ont ≥75% de leur stock emprunté ET au moins un emprunt en retard
+        </p>
+        <ul className="space-y-2">
+          {toolsStats.toolsNeedingMaintenance.map((tool: Tool) => {
+            const usagePercent = Math.round((tool.borrowedQuantity / tool.totalQuantity) * 100);
+            const overdueBorrows = allBorrows.filter(b => {
+              if (b.toolId !== tool.id) return false;
+              if (b.status === 'returned') return false;
+              const now = new Date();
+              const dueDate = new Date(b.dueDate);
+              return now > dueDate;
+            });
+            
+            return (
+              <li key={tool.id} className="text-sm text-orange-800 bg-white/60 p-3 rounded-lg">
+                <strong>{t(getToolTranslationKey(tool.name))}</strong>
+                <div className="flex items-center gap-4 mt-1 text-xs">
+                  <span className="px-2 py-1 bg-orange-100 rounded">
+                    {usagePercent}% emprunté ({tool.borrowedQuantity}/{tool.totalQuantity})
+                  </span>
+                  <span className="px-2 py-1 bg-red-100 rounded">
+                    {overdueBorrows.length} emprunt{overdueBorrows.length > 1 ? 's' : ''} en retard
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  </div>
+)}
   
   // ✅ Créer un tableau des outils avec stats d'emprunt
   const toolsWithBorrowStats = tools.map(tool => {
@@ -2950,32 +3177,41 @@ if (currentScreen === 'admin-tools-analysis') {
         </div>
 
         {/* ✅ KPI Cards - 100% DYNAMIQUES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <KPICard
-            title={t('usageRate')}
-            value={`${toolsStats.usageRate}%`}
-            icon={<Activity className="w-6 h-6" />}
-            trend={`${toolsStats.usageRateTrend > 0 ? '+' : ''}${toolsStats.usageRateTrend.toFixed(1)}%`}
-            trendUp={toolsStats.usageRateTrend >= 0}
-            color={COLORS.success}
-          />
-          
-          <KPICard
-            title={t('avgBorrowDuration')}
-            value={`${toolsStats.avgDuration}j`}
-            icon={<Calendar className="w-6 h-6" />}
-            trend={`${toolsStats.avgDurationTrend > 0 ? '+' : ''}${toolsStats.avgDurationTrend.toFixed(1)}j`}
-            trendUp={toolsStats.avgDurationTrend <= 0}
-            color={COLORS.info}
-          />
-          
-          <KPICard
-            title={t('maintenanceNeeded')}
-            value={toolsStats.maintenanceNeeded}
-            icon={<Settings className="w-6 h-6" />}
-            color={COLORS.warning}
-          />
-        </div>
+<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+  <KPICard
+    title={t('usageRate')}
+    value={`${toolsStats.usageRate}%`}
+    icon={<Activity className="w-6 h-6" />}
+    trend={`${toolsStats.usageRateTrend > 0 ? '+' : ''}${toolsStats.usageRateTrend.toFixed(1)}%`}
+    trendUp={toolsStats.usageRateTrend >= 0}
+    color={COLORS.success}
+  />
+  
+  <KPICard
+    title={t('avgBorrowDuration')}
+    value={`${toolsStats.avgDuration}j`}
+    icon={<Calendar className="w-6 h-6" />}
+    trend={`${toolsStats.avgDurationTrend > 0 ? '+' : ''}${toolsStats.avgDurationTrend.toFixed(1)}j`}
+    trendUp={toolsStats.avgDurationTrend <= 0}
+    color={COLORS.info}
+  />
+  
+  {/* ✅ NOUVEAU: Taux de disponibilité */}
+  <KPICard
+    title="Taux de disponibilité"
+    value={`${Math.round((availableCount / totalTools) * 100)}%`}
+    icon={<TrendingUp className="w-6 h-6" />}
+    color={COLORS.primary}
+    subtitle={`${availableCount}/${totalTools} disponibles`}
+  />
+  
+  <KPICard
+    title={t('maintenanceNeeded')}
+    value={toolsStats.maintenanceNeeded}
+    icon={<Settings className="w-6 h-6" />}
+    color={COLORS.warning}
+  />
+</div>
 
         {/* ✅ TABLEAU DÉTAILLÉ DES OUTILS */}
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200 mb-8">
@@ -2990,7 +3226,7 @@ if (currentScreen === 'admin-tools-analysis') {
             <button
               onClick={() => {
                 const data = toolsWithBorrowStats.map(tool => ({
-                  'Outil': t(tool.name),
+                  'Outil': t(getToolTranslationKey(tool.name)),
                   'Catégorie': t(tool.category),
                   'Quantité totale': tool.totalQuantity,
                   'Disponible': tool.availableQuantity,
@@ -3038,10 +3274,10 @@ if (currentScreen === 'admin-tools-analysis') {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center overflow-hidden">
-                          <img src={tool.image} alt={t(tool.name)} className="w-full h-full object-cover" />
+                          <img src={tool.image} alt={t(getToolTranslationKey(tool.name))} className="w-full h-full object-cover" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{t(tool.name)}</p>
+                          <p className="text-sm font-bold text-slate-900">{t(getToolTranslationKey(tool.name))}</p>
                           <p className="text-xs text-slate-500">{tool.drawer ? `Tiroir ${tool.drawer}` : '-'}</p>
                         </div>
                       </div>
@@ -3101,7 +3337,7 @@ if (currentScreen === 'admin-tools-analysis') {
           {toolsWithBorrowStats.length === 0 && (
             <div className="text-center py-12">
               <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-600">Aucune donnée d'emprunt disponible</p>
+              <p className="text-slate-600">{t('noBorrowData')}</p>
             </div>
           )}
         </div>
@@ -3154,7 +3390,7 @@ if (currentScreen === 'admin-users-analysis') {
   const handleSendBulkEmail = (borrows: BorrowRecord[]) => {
     if (borrows.length === 0) return;
     const confirm = window.confirm(
-      `Vous allez ouvrir ${borrows.length} emails dans votre client de messagerie.\n\nContinuer ?`
+      t('bulkEmailConfirm').replace('${borrows.length}', borrows.length.toString())
     );
     if (!confirm) return;
     borrows.forEach((b, index) => {
@@ -3267,105 +3503,6 @@ if (currentScreen === 'admin-users-analysis') {
 }
 
   // ============================================
-// ÉCRAN 8 - ADMIN INVENTORY (100% DYNAMIQUE)
-// ============================================
-if (currentScreen === 'admin-inventory') {
-  // ✅ Calculer les alertes dynamiquement
-  const inventoryAlerts = calculateInventoryAlerts(tools);
-  const usageDataDynamic = calculateUsageByCategory(tools, allBorrows);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Logo />
-      <LanguageSelector />
-      
-      <AdminSidebar currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
-      
-      <div className="ml-64 p-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-navy mb-2">{t('inventory')}</h1>
-          <p className="text-gray-600">{t('stockManagement')}</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <KPICard
-            title={t('totalStock')}
-            value={totalTools}
-            icon={<Package className="w-6 h-6" />}
-            color={COLORS.primary}
-          />
-          
-          <KPICard
-            title={t('availableStock')}
-            value={availableCount}
-            icon={<CheckCircle className="w-6 h-6" />}
-            color={COLORS.success}
-          />
-          
-          <KPICard
-            title={t('borrowedStock')}
-            value={borrowedCount}
-            icon={<ShoppingCart className="w-6 h-6" />}
-            color={COLORS.warning}
-          />
-          
-          <KPICard
-            title={t('availabilityRate')}
-            value={`${Math.round((availableCount / totalTools) * 100)}%`}
-            icon={<TrendingUp className="w-6 h-6" />}
-            color={COLORS.info}
-          />
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
-          <h3 className="text-lg font-bold text-navy mb-4">{t('stockByCategory')}</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={usageDataDynamic}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" name="Total" fill={COLORS.primary} radius={[8, 8, 0, 0]} />
-              <Bar dataKey="emprunts" name="Empruntés" fill={COLORS.warning} radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* ✅ Alertes dynamiques */}
-        <div className="bg-gradient-to-r from-red-50 to-blue-50 rounded-2xl p-6 border border-red-100">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-white rounded-xl">
-              <AlertCircle className="w-6 h-6 text-red-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-navy mb-2">{t('stockAlerts')}</h3>
-              
-              {inventoryAlerts.criticalTools.length === 0 && inventoryAlerts.maintenanceTools.length === 0 ? (
-                <p className="text-sm text-gray-700">Aucune alerte - Tout est en ordre</p>
-              ) : (
-                <ul className="space-y-2 text-sm text-gray-700">
-                  {inventoryAlerts.criticalTools.map(tool => (
-                    <li key={tool.id}>
-                      • <strong>Stock critique</strong>: {t(tool.name)} (0 disponible)
-                    </li>
-                  ))}
-                  
-                  {inventoryAlerts.maintenanceTools.map(tool => (
-                    <li key={tool.id}>
-                      • <strong>Maintenance recommandée</strong>: {t(tool.name)} ({tool.borrowedQuantity} empruntés)
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-  // ============================================
   // ÉCRAN 9 - Retour d'outil
   // ============================================
   // Au début de chaque écran
@@ -3457,12 +3594,12 @@ if (!currentUser) {
                     <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center mb-4 overflow-hidden shadow-sm group-hover:shadow-md transition-all">
                       <img 
                         src={tool.image} 
-                        alt={t(tool.name)}
+                        alt={t(getToolTranslationKey(tool.name))}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
                       />
                     </div>
                     
-                    <h3 className="font-bold text-slate-900 text-center mb-1">{t(tool.name)}</h3>
+                    <h3 className="font-bold text-slate-900 text-center mb-1">{t(getToolTranslationKey(tool.name))}</h3>
                     <p className="text-sm text-slate-600 text-center mb-3">{t(tool.category)}</p>
                     
                     <span className="inline-flex px-4 py-2 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
@@ -3491,8 +3628,8 @@ if (currentScreen === 'admin-manage-users') {
       
       <div className="ml-64 p-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-navy mb-2"> Gestion des Utilisateurs</h1>
-          <p className="text-gray-600">Créer, modifier et supprimer des utilisateurs</p>
+          <h1 className="text-4xl font-bold text-navy mb-2">{t('usersManagement')}</h1>
+          <p className="text-gray-600">{t('usersManagement')}</p>
         </div>
 
         {/* Bouton Ajouter */}
@@ -3506,7 +3643,7 @@ if (currentScreen === 'admin-manage-users') {
             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold flex items-center gap-2 shadow-lg"
           >
             <User className="w-5 h-5" />
-            Nouvel Utilisateur
+            {t('createPlaceholder')} {t('myAccount')}
           </button>
         </div>
 
@@ -3520,18 +3657,18 @@ if (currentScreen === 'admin-manage-users') {
           ) : users.length === 0 ? (
             <div className="p-12 text-center">
               <User className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-600">Aucun utilisateur</p>
+              <p className="text-slate-600">{t('noUsers')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b-2 border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Nom</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Email</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Badge</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Rôle</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('name')}</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('email')}</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('badge')}</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('role')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3571,7 +3708,7 @@ if (currentScreen === 'admin-manage-users') {
                             }}
                             className="px-3 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-800 transition-all text-sm font-semibold"
                           >
-                             Modifier
+                             {t('edit')}
                           </button>
                           <button
                             onClick={() => {
@@ -3581,7 +3718,7 @@ if (currentScreen === 'admin-manage-users') {
                             }}
                             className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all text-sm font-semibold"
                           >
-                             Supprimer
+                             {t('delete')}
                           </button>
                         </div>
                       </td>
@@ -3599,9 +3736,9 @@ if (currentScreen === 'admin-manage-users') {
             <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-slate-900">
-                  {userModalMode === 'create' ? ' Nouvel Utilisateur' :
-                   userModalMode === 'edit' ? ' Modifier Utilisateur' :
-                   ' Supprimer Utilisateur'}
+                  {userModalMode === 'create' ? t('createPlaceholder') + ' ' + t('myAccount') :
+                   userModalMode === 'edit' ? t('editUser') :
+                   t('deleteUser')}
                 </h3>
                 <button
                   onClick={() => setUserModalOpen(false)}
@@ -3614,31 +3751,31 @@ if (currentScreen === 'admin-manage-users') {
               {userModalMode === 'delete' ? (
                 <div>
                   <p className="text-slate-700 mb-6">
-                    Êtes-vous sûr de vouloir supprimer <strong>{selectedUser?.fullName}</strong> ?
+                    {t('deleteConfirm')} <strong>{selectedUser?.fullName}</strong> ?
                   </p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setUserModalOpen(false)}
                       className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold transition-all"
                     >
-                      Annuler
+                      {t('cancel')}
                     </button>
                     <button
                       onClick={async () => {
                         try {
                           const result = await usersAPI.delete(selectedUser!.id);
                           if (result.success) {
-                            alert('✅ Utilisateur supprimé');
+                            alert(`✅ ${t('myAccount')} ${t('delete')}d`);
                             await loadUsersFromBackend();
                             setUserModalOpen(false);
                           }
                         } catch (error: any) {
-                          alert(error.response?.data?.message || 'Erreur lors de la suppression');
+                          alert(error.response?.data?.message || t('deletionError'));
                         }
                       }}
                       className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all"
                     >
-                      Supprimer
+                      {t('delete')}
                     </button>
                   </div>
                 </div>
@@ -3648,16 +3785,15 @@ if (currentScreen === 'admin-manage-users') {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
                     
-                    const userData = {
-                      fullName: formData.get('fullName') as string,
-                      email: formData.get('email') as string,
-                      badgeId: formData.get('badgeId') as string,
-                      role: formData.get('role') as string,
-                      password: formData.get('password') as string || undefined
-                    };
-
                     try {
                       if (userModalMode === 'create') {
+                        const userData = {
+                          fullName: formData.get('fullName') as string,
+                          email: formData.get('email') as string,
+                          badgeId: formData.get('badgeId') as string,
+                          role: formData.get('role') as string,
+                          password: (formData.get('password') as string) || undefined
+                        };
                         const result = await usersAPI.create(userData);
                         if (result.success) {
                           alert('✅ Utilisateur créé');
@@ -3665,21 +3801,53 @@ if (currentScreen === 'admin-manage-users') {
                           setUserModalOpen(false);
                         }
                       } else {
-                        const result = await usersAPI.update(selectedUser!.id, userData);
-                        if (result.success) {
-                          alert('✅ Utilisateur modifié');
-                          await loadUsersFromBackend();
+                        // Pour la modification, envoyer uniquement les champs fournis
+                        const userData: any = {};
+                        const fullName = formData.get('fullName') as string;
+                        const email = formData.get('email') as string;
+                        const badgeId = formData.get('badgeId') as string;
+                        const role = formData.get('role') as string;
+                        
+                        console.log('📝 Modification utilisateur:');
+                        console.log('  Ancien fullName:', selectedUser?.fullName, '-> Nouveau:', fullName);
+                        console.log('  Ancien email:', selectedUser?.email, '-> Nouveau:', email);
+                        console.log('  Ancien badgeId:', selectedUser?.badgeId, '-> Nouveau:', badgeId);
+                        console.log('  Ancien role:', selectedUser?.role, '-> Nouveau:', role);
+                        
+                        if (fullName !== undefined && fullName.trim() !== '' && fullName !== selectedUser?.fullName) userData.fullName = fullName;
+                        if (email !== undefined && email.trim() !== '' && email !== selectedUser?.email) userData.email = email;
+                        if (badgeId !== undefined && badgeId.trim() !== '' && badgeId !== selectedUser?.badgeId) userData.badgeId = badgeId;
+                        if (role !== undefined && role !== selectedUser?.role) userData.role = role;
+                        
+                        console.log('📤 Données envoyées:', userData);
+                        
+                        // S'il y a au moins un champ à modifier
+                        if (Object.keys(userData).length > 0) {
+                          const result = await usersAPI.update(selectedUser!.id, userData);
+                          console.log('📥 Réponse du serveur:', result);
+                          if (result.success) {
+                            alert(`✅ ${t('myAccount')} ${t('edit')}ed`);
+                            await loadUsersFromBackend();
+                            setUserModalOpen(false);
+                          } else {
+                            alert(`❌ ${result.message || t('operationError')}`);
+                          }
+                        } else {
+                          alert(`ℹ️ ${t('noChanges')}`);
                           setUserModalOpen(false);
                         }
                       }
                     } catch (error: any) {
-                      alert(error.response?.data?.message || 'Erreur');
+                      console.error('❌ Erreur complète:', error);
+                      console.error('Response:', error.response);
+                      const errorMsg = error.response?.data?.message || error.message || JSON.stringify(error);
+                      alert(`❌ ${errorMsg}`);
                     }
                   }}
                   className="space-y-4"
                 >
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Nom Complet</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('fullName')}</label>
                     <input
                       type="text"
                       name="fullName"
@@ -3690,7 +3858,7 @@ if (currentScreen === 'admin-manage-users') {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('email')}</label>
                     <input
                       type="email"
                       name="email"
@@ -3712,7 +3880,7 @@ if (currentScreen === 'admin-manage-users') {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Rôle</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('role')}</label>
                     <select
                       name="role"
                       defaultValue={selectedUser?.role || 'student'}
@@ -3727,7 +3895,7 @@ if (currentScreen === 'admin-manage-users') {
                   {userModalMode === 'create' && (
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">
-                        Mot de passe (optionnel)
+                        {t('password')} ({t('optional')})
                       </label>
                       <input
                         type="password"
@@ -3743,13 +3911,13 @@ if (currentScreen === 'admin-manage-users') {
                       onClick={() => setUserModalOpen(false)}
                       className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold transition-all"
                     >
-                      Annuler
+                      {t('cancel')}
                     </button>
                     <button
                       type="submit"
                       className="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all"
                     >
-                      {userModalMode === 'create' ? 'Créer' : 'Modifier'}
+                      {userModalMode === 'create' ? t('create') : t('edit')}
                     </button>
                   </div>
                 </form>
@@ -3775,8 +3943,8 @@ if (currentScreen === 'admin-manage-tools') {
       
       <div className="ml-64 p-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-navy mb-2"> Gestion des Outils</h1>
-          <p className="text-gray-600">Créer, modifier et supprimer des outils</p>
+          <h1 className="text-4xl font-bold text-navy mb-2">{t('toolsManagement')}</h1>
+          <p className="text-gray-600">{t('toolsManagement')}</p>
         </div>
 
         {/* Bouton Ajouter */}
@@ -3790,7 +3958,7 @@ if (currentScreen === 'admin-manage-tools') {
             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold flex items-center gap-2 shadow-lg"
           >
             <Wrench className="w-5 h-5" />
-            Nouvel Outil
+            {t('createPlaceholder')} {t('tool')}
           </button>
         </div>
 
@@ -3804,20 +3972,20 @@ if (currentScreen === 'admin-manage-tools') {
           ) : tools.length === 0 ? (
             <div className="p-12 text-center">
               <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-600">Aucun outil</p>
+              <p className="text-slate-600">{t('noTools')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b-2 border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Outil</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Catégorie</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">Total</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">Disponible</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">Emprunté</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">Tiroir</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('tool')}</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('category')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('total')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('available')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('borrowed')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('drawer')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3827,10 +3995,10 @@ if (currentScreen === 'admin-manage-tools') {
                         <div className="flex items-center gap-3">
                           <img 
                             src={tool.image} 
-                            alt={tool.name}
+                            alt={t(getToolTranslationKey(tool.name))}
                             className="w-12 h-12 rounded-lg object-cover"
                           />
-                          <span className="font-medium text-slate-900">{t(tool.name)}</span>
+                          <span className="font-medium text-slate-900">{t(getToolTranslationKey(tool.name))}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">{t(tool.category)}</td>
@@ -3868,7 +4036,7 @@ if (currentScreen === 'admin-manage-tools') {
                             }}
                             className="px-3 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-800 transition-all text-sm font-semibold"
                           >
-                             Modifier
+                             {t('edit')}
                           </button>
                           <button
                             onClick={() => {
@@ -3878,7 +4046,7 @@ if (currentScreen === 'admin-manage-tools') {
                             }}
                             className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all text-sm font-semibold"
                           >
-                             Supprimer
+                             {t('delete')}
                           </button>
                         </div>
                       </td>
@@ -3896,9 +4064,9 @@ if (currentScreen === 'admin-manage-tools') {
             <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-slate-900">
-                  {toolModalMode === 'create' ? ' Nouvel Outil' :
-                   toolModalMode === 'edit' ? ' Modifier Outil' :
-                   ' Supprimer Outil'}
+                  {toolModalMode === 'create' ? t('createPlaceholder') + ' ' + t('tool') :
+                   toolModalMode === 'edit' ? t('editTool') :
+                   t('deleteTool')}
                 </h3>
                 <button
                   onClick={() => setToolModalOpen(false)}
@@ -3911,31 +4079,31 @@ if (currentScreen === 'admin-manage-tools') {
               {toolModalMode === 'delete' ? (
                 <div>
                   <p className="text-slate-700 mb-6">
-                    Êtes-vous sûr de vouloir supprimer <strong>{t(selectedToolForEdit?.name || '')}</strong> ?
+                    {t('deleteConfirm')} <strong>{t(selectedToolForEdit?.name || '')}</strong> ?
                   </p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setToolModalOpen(false)}
                       className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold transition-all"
                     >
-                      Annuler
+                      {t('cancel')}
                     </button>
                     <button
                       onClick={async () => {
                         try {
                           const result = await toolsAPI.delete(selectedToolForEdit!.id);
                           if (result.success) {
-                            alert('✅ Outil supprimé');
+                            alert(`✅ ${t('tool')} ${t('delete')}d`);
                             await reloadTools();
                             setToolModalOpen(false);
                           }
                         } catch (error: any) {
-                          alert(error.response?.data?.message || 'Erreur lors de la suppression');
+                          alert(error.response?.data?.message || t('deletionError'));
                         }
                       }}
                       className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all"
                     >
-                      Supprimer
+                      {t('delete')}
                     </button>
                   </div>
                 </div>
@@ -3945,33 +4113,70 @@ if (currentScreen === 'admin-manage-tools') {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
                     
-                    const toolData = {
-                      name: formData.get('name') as string,
-                      category: formData.get('category') as string,
-                      imageUrl: formData.get('imageUrl') as string || undefined,
-                      totalQuantity: parseInt(formData.get('totalQuantity') as string),
-                      size: formData.get('size') as string || undefined,
-                      drawer: formData.get('drawer') as string || undefined
-                    };
-
                     try {
                       if (toolModalMode === 'create') {
+                        const toolData = {
+                          name: formData.get('name') as string,
+                          category: formData.get('category') as string,
+                          imageUrl: formData.get('imageUrl') as string || undefined,
+                          totalQuantity: parseInt(formData.get('totalQuantity') as string),
+                          size: formData.get('size') as string || undefined,
+                          drawer: formData.get('drawer') as string || undefined
+                        };
                         const result = await toolsAPI.create(toolData);
                         if (result.success) {
                           alert('✅ Outil créé');
                           await reloadTools();
                           setToolModalOpen(false);
+                        } else {
+                          alert(`❌ ${result.message || 'Erreur'}`);
                         }
                       } else {
-                        const result = await toolsAPI.update(selectedToolForEdit!.id, toolData);
-                        if (result.success) {
-                          alert('✅ Outil modifié');
-                          await reloadTools();
+                        // Pour la modification, envoyer uniquement les champs modifiés
+                        const toolData: any = {};
+                        const name = formData.get('name') as string;
+                        const category = formData.get('category') as string;
+                        const imageUrl = formData.get('imageUrl') as string;
+                        const totalQuantity = formData.get('totalQuantity') as string;
+                        const size = formData.get('size') as string;
+                        const drawer = formData.get('drawer') as string;
+                        
+                        console.log('🔧 MODIFICATION OUTIL:');
+                        console.log('  Ancien name:', selectedToolForEdit?.name, '-> Nouveau:', name);
+                        console.log('  Ancien category:', selectedToolForEdit?.category, '-> Nouveau:', category);
+                        
+                        if (name !== undefined && name.trim() !== '' && name !== selectedToolForEdit?.name) toolData.name = name;
+                        if (category !== undefined && category !== selectedToolForEdit?.category) toolData.category = category;
+                        if (uploadedImageUrl && uploadedImageUrl !== selectedToolForEdit?.imageUrl) toolData.imageUrl = uploadedImageUrl;
+                        if (totalQuantity !== undefined && totalQuantity.trim() !== '') {
+                          const qty = parseInt(totalQuantity);
+                          if (qty !== selectedToolForEdit?.totalQuantity) toolData.totalQuantity = qty;
+                        }
+                        if (size !== undefined && size.trim() !== '' && size !== selectedToolForEdit?.size) toolData.size = size;
+                        if (drawer !== undefined && drawer.trim() !== '' && drawer !== selectedToolForEdit?.drawer) toolData.drawer = drawer;
+                        
+                        console.log('📤 Données à envoyer:', toolData);
+                        
+                        if (Object.keys(toolData).length > 0) {
+                          const result = await toolsAPI.update(selectedToolForEdit!.id, toolData);
+                          console.log('📥 Réponse:', result);
+                          if (result.success) {
+                            alert('✅ Outil modifié');
+                            setUploadedImageUrl(null);
+                            await reloadTools();
+                            setToolModalOpen(false);
+                          } else {
+                            alert(`❌ ${result.message || 'Erreur'}`);
+                          }
+                        } else {
+                          alert('ℹ️ Aucun changement');
                           setToolModalOpen(false);
                         }
                       }
                     } catch (error: any) {
-                      alert(error.response?.data?.message || 'Erreur');
+                      console.error('❌ Erreur:', error);
+                      const errorMsg = error.response?.data?.message || error.message || JSON.stringify(error);
+                      alert(`❌ ${errorMsg}`);
                     }
                   }}
                   className="space-y-4"
@@ -3988,22 +4193,22 @@ if (currentScreen === 'admin-manage-tools') {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Catégorie</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('category')}</label>
                     <select
                       name="category"
                       defaultValue={selectedToolForEdit?.category || 'category.tournevis'}
                       className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     >
-                      <option value="category.tournevis">Tournevis</option>
-                      <option value="category.cles">Clés</option>
-                      <option value="category.pinces">Pinces</option>
-                      <option value="category.marquage">Marquage</option>
-                      <option value="category.coupe">Coupe</option>
+                      <option value="category.tournevis">{t('category.tournevis')}</option>
+                      <option value="category.cles">{t('category.cles')}</option>
+                      <option value="category.pinces">{t('category.pinces')}</option>
+                      <option value="category.marquage">{t('category.marquage')}</option>
+                      <option value="category.coupe">{t('category.coupe')}</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Quantité Totale</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('totalQuantity')}</label>
                     <input
                       type="number"
                       name="totalQuantity"
@@ -4015,15 +4220,15 @@ if (currentScreen === 'admin-manage-tools') {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Taille</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('size')}</label>
                     <select
                       name="size"
                       defaultValue={selectedToolForEdit?.size || 'Moyen'}
                       className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     >
-                      <option value="Grand">Grand</option>
-                      <option value="Moyen">Moyen</option>
-                      <option value="Petit">Petit</option>
+                      <option value="Grand">{t('sizeGrand')}</option>
+                      <option value="Moyen">{t('sizeMoyen')}</option>
+                      <option value="Petit">{t('sizePetit')}</option>
                       <option value="Mini">Mini</option>
                     </select>
                   </div>
@@ -4044,30 +4249,75 @@ if (currentScreen === 'admin-manage-tools') {
 
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">
-                      URL Image (optionnel)
+                       Image (Parcourir ou Coller)
                     </label>
-                    <input
-                      type="text"
-                      name="imageUrl"
-                      defaultValue={selectedToolForEdit?.image}
-                      placeholder="/images/default-tool.jpg"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
+                    <div className="space-y-3">
+                      {/* Zone Drag & Drop */}
+                      <div
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const files = e.dataTransfer.files;
+                          if (files.length > 0 && files[0].type.startsWith('image/')) {
+                            handleImageUpload(files[0]);
+                          }
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        className="border-2 border-dashed border-blue-400 rounded-lg p-4 text-center bg-blue-50 cursor-pointer hover:bg-blue-100 transition"
+                      >
+                        <input
+                          type="file"
+                          id="imageInput"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              handleImageUpload(e.target.files[0]);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <label htmlFor="imageInput" className="cursor-pointer block">
+                          <p className="text-sm font-semibold text-slate-700">
+                             Cliquez pour parcourir ou glissez-déposez une image
+                          </p>
+                        </label>
+                      </div>
+
+                      {/* Aperçu de l'image */}
+                      {(uploadedImageUrl || selectedToolForEdit?.imageUrl) && (
+                        <div className="flex items-center justify-center">
+                          <img
+                            src={uploadedImageUrl || selectedToolForEdit?.imageUrl || ''}
+                            alt={selectedToolForEdit?.name}
+                            className="max-w-full h-auto max-h-40 rounded-lg border-2 border-slate-300"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
-                      onClick={() => setToolModalOpen(false)}
+                      onClick={() => {
+                        setUploadedImageUrl(null);
+                        setToolModalOpen(false);
+                      }}
                       className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold transition-all"
                     >
-                      Annuler
+                      {t('cancel')}
                     </button>
                     <button
                       type="submit"
                       className="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all"
                     >
-                      {toolModalMode === 'create' ? 'Créer' : 'Modifier'}
+                      {toolModalMode === 'create' ? t('create') : t('edit')}
                     </button>
                   </div>
                 </form>
