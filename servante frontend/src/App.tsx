@@ -398,7 +398,7 @@ const KPICard: React.FC<{
 // COMPOSANT - Logo EMINES
 // ============================================
 const Logo = () => (
-  <div className="language-selector">
+  <div>
     <img 
       src={logo} 
       alt="Logo EMINES" 
@@ -1466,14 +1466,16 @@ if (currentScreen === 'tool-selection') {
           </div>
 
           {/* ✅ PARTIE DROITE: Menu + Langue */}
-          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3 md:gap-4 flex-shrink-0">
             <UserMenu 
               currentUser={currentUser} 
               allBorrows={allBorrows}
               setCurrentScreen={setCurrentScreen} 
             />
             
-            <LanguageSelector />
+            <div className="flex items-center">
+              <LanguageSelector />
+            </div>
           </div>
         </div>
       </div>
@@ -1889,7 +1891,7 @@ if (currentScreen === 'confirm-borrow') {
         const result = await borrowsAPI.markAsReturned(activeBorrow.id);
         
         if (result.success) {
-          alert(`✅ ${selectedTool.name} ${t('returnSuccess')}!`);
+          alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('returnSuccess')}!`);
           // Recharger les données
           await loadBorrowsFromBackend();
           await loadToolsFromBackend();
@@ -1910,7 +1912,7 @@ if (currentScreen === 'confirm-borrow') {
         const result = await borrowsAPI.borrow(currentUser.id, selectedTool.id, 1);
         
         if (result.success) {
-          alert(`✅ ${selectedTool.name} ${t('borrowSuccess')}!`);
+          alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
           // Recharger les données
           await loadBorrowsFromBackend();
           await loadToolsFromBackend();
@@ -1930,28 +1932,48 @@ if (currentScreen === 'confirm-borrow') {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
-      <Logo />
-      <LanguageSelector />
-      
-      <div className="max-w-2xl w-full p-8 rounded-2xl bg-white shadow-xl border border-slate-200">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900">{titleText}</h2>
-            <p className="text-sm text-slate-600 mt-2">{infoText}</p>
+    <div className="min-h-screen bg-slate-50">
+      {/* Header fixe en haut */}
+      <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div className="flex items-center justify-between py-3 px-6 h-20">
+          {/* GAUCHE: Langue */}
+          <div className="flex items-center">
+            <LanguageSelector />
           </div>
-          <button 
-            onClick={() => { 
-              setSelectedTool(null); 
-              setIsReturnMode(false);
-              setCurrentScreen(goBackScreen); 
-            }} 
-            disabled={loading}
-            className="p-2 rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50"
-          >
-            <X className="w-6 h-6 text-slate-600" />
-          </button>
+          
+          {/* CENTRE: Logo */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <Logo />
+          </div>
+          
+          {/* DROITE: Vide (pour l'équilibre) */}
+          <div className="w-32"></div>
         </div>
+      </div>
+
+      {/* Contenu du modal */}
+      <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-6">
+        <div className="max-w-2xl w-full">
+          {/* Header du modal */}
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900">{titleText}</h2>
+              <p className="text-sm text-slate-600 mt-2">{infoText}</p>
+            </div>
+            <button 
+              onClick={() => { 
+                setSelectedTool(null); 
+                setIsReturnMode(false);
+                setCurrentScreen(goBackScreen); 
+              }} 
+              disabled={loading}
+              className="p-2 rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50"
+            >
+              <X className="w-6 h-6 text-slate-600" />
+            </button>
+          </div>
+      
+          <div className="p-8 rounded-2xl bg-white shadow-xl border border-slate-200">
 
         {selectedTool && (
           <div className="mt-6 bg-slate-50 rounded-2xl p-6 flex items-center gap-6 border-2 border-slate-200">
@@ -2014,6 +2036,8 @@ if (currentScreen === 'confirm-borrow') {
         <div className="mt-6 text-sm text-slate-700 bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start gap-3">
           <span className="text-2xl">💡</span>
           <div className="font-medium">{notificationText}</div>
+        </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2104,7 +2128,7 @@ if (currentScreen === 'user-account') {
             </div>
             <div className="flex-1">
               <h2 className="text-3xl font-bold mb-2">{currentUser.fullName}</h2>
-              <p className="text-white/90 mb-1">{currentUser.email}</p>
+              <p className="text-white mb-1">{currentUser.email}</p>
               <div className="flex items-center gap-4 text-sm">
                 <span className="px-3 py-1 bg-white/20 rounded-full backdrop-blur-sm">
                   <CreditCard className="w-4 h-4 inline mr-1" />
@@ -3583,12 +3607,18 @@ if (!currentUser) {
       <div className="min-h-screen bg-slate-50">
         <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm sticky top-0 z-40">
           <div className="container mx-auto flex items-center justify-between py-3 px-6">
-            {/* PARTIE GAUCHE: Logo */}
-            <div className="flex-shrink-0">
+            {/* PARTIE GAUCHE: Langue */}
+            <div className="flex items-center">
+              <LanguageSelector />
+            </div>
+            
+            {/* PARTIE CENTRE: Logo */}
+            <div className="flex-shrink-0 absolute left-1/2 transform -translate-x-1/2">
               <Logo />
             </div>
             
-            <div className="flex items-center gap-4">
+            {/* PARTIE DROITE: Bouton retour + Titre */}
+            <div className="flex items-center gap-4 ml-auto">
               <button 
                 onClick={() => setCurrentScreen('tool-selection')} 
                 className="p-3 hover:bg-slate-100 rounded-xl transition-all"
@@ -3600,11 +3630,6 @@ if (!currentUser) {
                 <Box className="w-8 h-8 text-slate-900" />
                 <h1 className="text-2xl font-bold text-slate-900">{t('returnToolTitle')}</h1>
               </div>
-            </div>
-            
-            {/* PARTIE DROITE: Langue */}
-            <div className="flex items-center gap-2">
-              <LanguageSelector />
             </div>
           </div>
         </div>
