@@ -20,9 +20,7 @@ router.get('/:id', getBorrowById);                 // GET /api/borrows/:id
 router.get('/user/:userId', getBorrowsByUser);     // GET /api/borrows/user/:userId
 router.put('/:id/return', returnBorrow);           // PUT /api/borrows/:id/return
 router.post('/:id/mark-returned', markAsReturned); // POST /api/borrows/:id/mark-returned)
-
-// ✅ Routes protégées (Admin uniquement)
-router.put('/update-statuses', protect, updateBorrowStatuses);
-router.get('/stats/overview', protect, getBorrowsStats);
+router.put('/update-statuses', updateBorrowStatuses);
+router.get('/stats/overview', getBorrowsStats);
 
 export default router;

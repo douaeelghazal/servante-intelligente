@@ -20,11 +20,11 @@ router.get('/available', getAvailableTools);
 router.get('/:id', getToolById);
 
 // ============================================
-// ROUTES ADMIN (protégées)
+// ROUTES PUBLIQUES POUR DÉVELOPPEMENT
 // ============================================
-router.post('/', protect, createTool);
-router.put('/:id', protect, updateTool);
-router.delete('/:id', protect, deleteTool);
-router.get('/stats/overview', protect, getToolsStats);
+router.post('/', createTool);
+router.put('/:id', updateTool);
+router.delete('/:id', deleteTool);
+router.get('/stats/overview', getToolsStats);
 
 export default router;

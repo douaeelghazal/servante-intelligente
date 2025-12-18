@@ -65,13 +65,22 @@ export const createUser = async (req: Request, res: Response) => {
     // Hasher le mot de passe si fourni
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
+    // Convertir le role en majuscules (student -> STUDENT, professor -> PROFESSOR, etc.)
+    const roleMap: { [key: string]: string } = {
+      'student': 'STUDENT',
+      'professor': 'PROFESSOR',
+      'technician': 'TECHNICIAN',
+      'admin': 'ADMIN'
+    };
+    const normalizedRole = roleMap[(role || 'student').toLowerCase()] || 'STUDENT';
+
     // Créer l'utilisateur
     const user = await prisma.user.create({
       data: {
         fullName,
         email,
         badgeId,
-        role: role || 'student',
+        role: normalizedRole,
         password: hashedPassword
       },
       select: {
@@ -101,7 +110,11 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { fullName, email, badgeId, role } = req.body;
+    let { fullName, email, badgeId, role } = req.body;
+
+    console.log('🔧 UPDATE USER REQUEST:');
+    console.log('  ID:', id);
+    console.log('  Body:', { fullName, email, badgeId, role });
 
     // Vérifier si l'utilisateur existe
     const user = await prisma.user.findUnique({
@@ -109,21 +122,68 @@ export const updateUser = async (req: Request, res: Response) => {
     });
 
     if (!user) {
+      console.log('❌ Utilisateur non trouvé:', id);
       return res.status(404).json({
         success: false,
         message: 'Utilisateur non trouvé'
       });
     }
 
+    console.log('✅ Utilisateur trouvé:', user.fullName);
+
+    // Vérifier si l'email existe déjà (si on change l'email)
+    if (email !== undefined && email !== user.email) {
+      console.log('🔍 Vérification email:', email);
+      const existingEmail = await prisma.user.findUnique({
+        where: { email }
+      });
+      if (existingEmail) {
+        console.log('❌ Email déjà utilisé:', email);
+        return res.status(400).json({
+          success: false,
+          message: 'Cet email est déjà utilisé'
+        });
+      }
+    }
+
+    // Vérifier si le badge existe déjà (si on change le badge)
+    if (badgeId !== undefined && badgeId !== user.badgeId) {
+      console.log('🔍 Vérification badge:', badgeId);
+      const existingBadge = await prisma.user.findUnique({
+        where: { badgeId }
+      });
+      if (existingBadge) {
+        console.log('❌ Badge déjà utilisé:', badgeId);
+        return res.status(400).json({
+          success: false,
+          message: 'Ce badge est déjà utilisé'
+        });
+      }
+    }
+
+    // Construire l'objet data avec uniquement les champs fournis
+    const updateData: any = {};
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (email !== undefined) updateData.email = email;
+    if (badgeId !== undefined) updateData.badgeId = badgeId;
+    if (role !== undefined) {
+      // Convertir le role en majuscules (student -> STUDENT, professor -> PROFESSOR, etc.)
+      const roleMap: { [key: string]: string } = {
+        'student': 'STUDENT',
+        'professor': 'PROFESSOR',
+        'technician': 'TECHNICIAN',
+        'admin': 'ADMIN'
+      };
+      updateData.role = roleMap[role.toLowerCase()] || role;
+      console.log('🔄 Role converti:', role, '->', updateData.role);
+    }
+
+    console.log('📤 Données à mettre à jour:', updateData);
+
     // Mettre à jour
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: {
-        fullName,
-        email,
-        badgeId,
-        role
-      },
+      data: updateData,
       select: {
         id: true,
         fullName: true,
@@ -132,6 +192,8 @@ export const updateUser = async (req: Request, res: Response) => {
         role: true
       }
     });
+
+    console.log('✅ Utilisateur mis à jour:', updatedUser);
 
     res.json({
       success: true,

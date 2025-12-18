@@ -12,6 +12,7 @@ import authRoutes from './routes/authRoutes';
 import toolsRoutes from './routes/toolsRoutes';
 import borrowsRoutes from './routes/borrowsRoutes';
 import usersRoutes from './routes/usersRoutes';
+import uploadRoutes from './routes/uploadRoutes';
 
 // Importer les middlewares
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -62,6 +63,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api/borrows', borrowsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // ============================================
 // GESTION DES ERREURS

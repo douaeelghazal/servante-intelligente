@@ -178,25 +178,26 @@ export const updateTool = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // Construire l'objet data avec uniquement les champs fournis
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (category !== undefined) updateData.category = category;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+    if (size !== undefined) updateData.size = size;
+    if (drawer !== undefined) updateData.drawer = drawer;
+
     // Calculer la nouvelle quantité disponible si totalQuantity change
-    let newAvailableQuantity = existingTool.availableQuantity;
-    if (totalQuantity && totalQuantity !== existingTool.totalQuantity) {
-      const quantityDiff = parseInt(totalQuantity) - existingTool.totalQuantity;
-      newAvailableQuantity = Math.max(0, existingTool.availableQuantity + quantityDiff);
+    if (totalQuantity !== undefined) {
+      const newTotalQuantity = parseInt(totalQuantity);
+      const quantityDiff = newTotalQuantity - existingTool.totalQuantity;
+      updateData.totalQuantity = newTotalQuantity;
+      updateData.availableQuantity = Math.max(0, existingTool.availableQuantity + quantityDiff);
     }
 
     // Mettre à jour
     const tool = await prisma.tool.update({
       where: { id },
-      data: {
-        name,
-        category,
-        imageUrl,
-        totalQuantity: totalQuantity ? parseInt(totalQuantity) : existingTool.totalQuantity,
-        availableQuantity: newAvailableQuantity,
-        size,
-        drawer
-      }
+      data: updateData
     });
 
     res.status(200).json({
