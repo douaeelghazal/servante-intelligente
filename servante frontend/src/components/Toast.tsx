@@ -51,7 +51,7 @@ export const ToastNotification: React.FC<ToastProps> = ({
   }[type];
 
   return (
-    <div className={`${bgColor} rounded-lg p-4 shadow-lg flex items-center gap-3 animations`}>
+    <div className={`${bgColor} rounded-lg p-4 shadow-lg flex items-center gap-3 transition-all duration-300 ease-out`}>
       <Icon className={`w-5 h-5 ${iconColor} flex-shrink-0`} />
       <p className={`${textColor} flex-1`}>{message}</p>
       <button

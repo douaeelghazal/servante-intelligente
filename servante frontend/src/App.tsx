@@ -75,6 +75,13 @@ import logo from './images/emines_logo.png';
 import { ToastContainer, Toast } from './components/Toast';
 
 // ============================================
+// IMPORTS - Components
+// ============================================
+import UserNotifications from './components/UserNotifications';
+import UserSettings from './components/UserSettings';
+import AdminSettings from './components/AdminSettings';
+
+// ============================================
 // IMPORTS - API Backend
 // ============================================
 import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI, categoriesAPI } from './services/api';
@@ -163,6 +170,9 @@ type Screen =
   | 'admin-users-analysis'
   | 'return-tool'
   | 'user-account' 
+  | 'user-notifications'
+  | 'user-settings'
+  | 'admin-settings'
   |'admin-manage-users'    
   | 'admin-manage-tools'; 
 type SortOption = 'default' | 'name-asc' | 'name-desc' | 'category';
@@ -574,7 +584,10 @@ const UserMenu: React.FC<{
           </button>
 
           <button
-            onClick={() => setMenuOpen(false)}
+            onClick={() => {
+              setCurrentScreen('user-notifications');
+              setMenuOpen(false);
+            }}
             className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3"
           >
             <Bell className="w-5 h-5 text-slate-600" />
@@ -582,7 +595,10 @@ const UserMenu: React.FC<{
           </button>
 
           <button
-            onClick={() => setMenuOpen(false)}
+            onClick={() => {
+              setCurrentScreen('user-settings');
+              setMenuOpen(false);
+            }}
             className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3"
           >
             <Settings className="w-5 h-5 text-slate-600" />
@@ -628,6 +644,7 @@ const AdminSidebar: React.FC<{
     // Gestion (NOUVEAU)
     { id: 'admin-manage-users', icon: <User className="w-5 h-5" />, label: t('manageUsers') },
     { id: 'admin-manage-tools', icon: <Wrench className="w-5 h-5" />, label: t('manageTools') },
+    { id: 'admin-settings', icon: <Settings className="w-5 h-5" />, label: t('settings') },
   ];
 
   return (
@@ -3948,6 +3965,42 @@ if (!currentUser) {
       </div>
     );
   }
+
+  // ============================================
+// ÉCRAN - NOTIFICATIONS UTILISATEUR
+// ============================================
+if (currentScreen === 'user-notifications') {
+  return (
+    <UserNotifications 
+      currentUser={currentUser}
+      onBack={() => setCurrentScreen('tool-selection')}
+    />
+  );
+}
+
+  // ============================================
+// ÉCRAN - PARAMÈTRES UTILISATEUR
+// ============================================
+if (currentScreen === 'user-settings') {
+  return (
+    <UserSettings 
+      currentUser={currentUser}
+      setCurrentScreen={setCurrentScreen}
+      onBack={() => setCurrentScreen('tool-selection')}
+    />
+  );
+}
+
+  // ============================================
+// ÉCRAN - PARAMÈTRES ADMINISTRATEUR
+// ============================================
+if (currentScreen === 'admin-settings') {
+  return (
+    <AdminSettings 
+      setCurrentScreen={setCurrentScreen}
+    />
+  );
+}
 
   // ============================================
 // ÉCRAN - GESTION UTILISATEURS
