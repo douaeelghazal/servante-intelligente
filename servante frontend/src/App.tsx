@@ -70,6 +70,11 @@ import i18n from './i18n';
 import logo from './images/emines_logo.png';
 
 // ============================================
+// IMPORT - Toast Notifications
+// ============================================
+import { ToastContainer, Toast } from './components/Toast';
+
+// ============================================
 // IMPORTS - API Backend
 // ============================================
 import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI, categoriesAPI } from './services/api';
@@ -991,6 +996,12 @@ export default function App() {
     
     // Ouvrir le client email par défaut
     window.location.href = mailtoLink;
+
+    // Show notification toast
+    const message = type === 'reminder' 
+      ? `✉️ ${t('emailReminderSent') || 'Email reminder sent'} to ${borrow.userName}`
+      : `✉️ ${t('emailOverdueSent') || 'Overdue notification sent'} to ${borrow.userName}`;
+    showToast(message, 'success', 3000);
   };
 
   // FONCTION - Obtenir le nom traduit d'un outil
@@ -1068,6 +1079,18 @@ const [categoriesLoading, setCategoriesLoading] = useState(false);
     dateRange: 'all',
     drawer: 'all'
   }); 
+
+  // ✅ États pour les notifications/toasts
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', duration = 4000) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type, duration }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  }; 
 
     useEffect(() => {
   loadToolsFromBackend();
@@ -3702,10 +3725,15 @@ if (currentScreen === 'admin-users-analysis') {
         sendEmailReminder(b, type);
       }, index * 500);
     });
+    // Show bulk email confirmation after a short delay
+    setTimeout(() => {
+      showToast(`📧 ${borrows.length} ${t('emailsSent') || 'emails sent'} successfully`, 'success', 3000);
+    }, borrows.length * 500 + 500);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastContainer toasts={toasts} onClose={removeToast} />
       <Logo />
       <div className="fixed top-6 right-6 z-50">
         <LanguageSelector />
