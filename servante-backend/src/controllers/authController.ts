@@ -122,6 +122,67 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+// @desc    Connexion utilisateur avec email et mot de passe
+// @route   POST /api/auth/user-login
+// @access  Public
+export const userLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        message: 'Email et mot de passe requis'
+      });
+      return;
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+      return;
+    }
+
+    // Vérifier que le mot de passe correspond au mot de passe de l'utilisateur
+    if (password !== user.password) {
+      res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+      return;
+    }
+
+    const token = generateToken(user.id);
+
+    res.json({
+      success: true,
+      message: 'Connexion réussie',
+      data: {
+        user: {
+          id: user.id,
+          badgeId: user.badgeId,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role
+        },
+        token
+      }
+    });
+  } catch (error) {
+    console.error('Erreur user login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+};
+
 // @desc    Obtenir l'utilisateur connecté
 // @route   GET /api/auth/me
 // @access  Private

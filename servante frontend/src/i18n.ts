@@ -83,9 +83,16 @@ const fr = {
   adminPassword: "Entrez le mot de passe administrateur",
   password: "Mot de passe",
   passwordOptional: 'Mot de passe (optionnel)',
+  leaveEmptyToKeep: 'Laissez vide pour ne pas modifier',
   login: "Se connecter",
   demoPassword: "Demo password",
   incorrectPassword: '❌ Mot de passe incorrect',
+  
+  // User Login
+  userLogin: "Connexion Utilisateur",
+  loginWithEmail: "Connectez-vous avec votre email et mot de passe",
+  emailPasswordRequired: "Email et mot de passe requis",
+  invalidCredentials: "Email ou mot de passe incorrect",
   
   // Admin Navigation
   overview: "Vue d'ensemble",
@@ -158,6 +165,7 @@ const fr = {
   
   // User Account Page
   myAccount: "Mon Compte",
+  account: "Compte",
   borrowHistory: "Historique d'emprunts",
   notifications: "Notifications",
   settings: "Paramètres",
@@ -185,6 +193,7 @@ const fr = {
   // Alerts on User Account
   toolsOverdue: 'outil(s) en retard',
   toolsDueSoon: 'outil(s) à retourner bientôt',
+  toolsLate: 'Retards',
   daysRemaining: 'À retourner dans',
   remaining: 'restants',
   daysRemainingShort: 'jour(s) restants',
@@ -194,6 +203,8 @@ const fr = {
   alertLate: 'En retard de',
   alertReturnSoon: 'à retourner bientôt',
   alertReturnIn: 'À retourner dans',
+  alertReminderOverdue: 'Envoyer un rappel de retard',
+  alertReminderSoon: 'Envoyer un rappel',
   onTime: 'À temps',
   delay: 'Retard',
   
@@ -210,6 +221,11 @@ const fr = {
   userCreated: 'Utilisateur créé',
   userModified: 'Utilisateur modifié',
   usersManagement: 'Utilisateurs',
+  currentPassword: 'Mot de passe actuel',
+  currentPasswordHelp: 'Cliquez pour afficher le mot de passe actuel',
+  newPassword: 'Nouveau mot de passe',
+  show: 'Afficher',
+  hide: 'Masquer',
   
   // Tool Management
   toolsManagementTitle: 'Gestion des Outils',
@@ -225,6 +241,22 @@ const fr = {
   imageUrlOptional: 'URL Image (optionnel)',
   imageUrlPlaceholder: '/images/default-tool.jpg',
   toolsManagement: 'Outils',
+  
+  // Category Management
+  categoryManagement: 'Gestion des Catégories',
+  newCategory: 'Nouvelle Catégorie',
+  categoryAll: 'Toutes les catégories',
+  noCategories: 'Aucune catégorie',
+  categoryName: 'Nom de la catégorie',
+  categoryNamePlaceholder: 'Nom de la catégorie',
+  categoryDeleted: 'Catégorie supprimée',
+  categoryCreated: 'Catégorie créée',
+  categoryModified: 'Catégorie modifiée',
+  categoryWithTools: 'Impossible de supprimer cette catégorie (contient des outils)',
+  editCategory: 'Modifier Catégorie',
+  deleteCategory: 'Supprimer Catégorie',
+  categoryAlreadyExists: 'Une catégorie avec ce nom existe déjà',
+  toolsCount: 'Nombre d\'outils',
   
   // Filters (Admin)
   advancedFilters: 'Filtres avancés',
@@ -272,11 +304,19 @@ const fr = {
   returnSuccess: 'retourné avec succès!',
   returnError: 'Erreur lors du retour',
   borrowSuccess: 'emprunté avec succès!',
+  required: 'requis',
   borrowError: 'Erreur lors de l\'emprunt',
   noChanges: 'ℹ️ Aucun changement',
   operationError: 'Erreur lors de l\'opération',
   success: 'Succès',
   deleteConfirm: 'Êtes-vous sûr?',
+  deleteUser: 'Êtes-vous sûr de vouloir supprimer',
+  deleteTool: 'Êtes-vous sûr de vouloir supprimer',
+  deleteCategory: 'Êtes-vous sûr de vouloir supprimer',
+  attention: 'Attention',
+  activeBorrowsWarning: 'Cet utilisateur a',
+  activeBorrowsCount: 'emprunt(s) actif(s)',
+  sureDeleteUser: 'Êtes-vous VRAIMENT sûr de vouloir supprimer cet utilisateur ?',
   close: 'Fermer',
   save: 'Enregistrer',
   back: 'Retour',
@@ -372,6 +412,8 @@ const fr = {
   processing_full: 'Traitement...',
   noToolsFoundFilters: 'Aucun outil ne correspond aux filtres',
   createPlaceholder: 'Créer',
+  article_un: 'un',
+  article_une: 'une',
   
   // Email translations
   toolReminder: 'Rappel de retour: {toolName}',
@@ -508,8 +550,16 @@ const en = {
   adminPassword: "Enter administrator password",
   password: "Password",
   passwordOptional: 'Password (optional)',
+  leaveEmptyToKeep: 'Leave empty to keep current password',
   login: "Login",
   demoPassword: "Demo password",
+  incorrectPassword: '❌ Incorrect password',
+  
+  // User Login
+  userLogin: "User Login",
+  loginWithEmail: "Login with your email and password",
+  emailPasswordRequired: "Email and password are required",
+  invalidCredentials: "Invalid email or password",
   incorrectPassword: '❌ Incorrect password',
   
   // Admin Navigation
@@ -583,6 +633,7 @@ const en = {
   
   // User Account Page
   myAccount: "My Account",
+  account: "Account",
   borrowHistory: "Borrow History",
   notifications: "Notifications",
   settings: "Settings",
@@ -610,6 +661,7 @@ const en = {
   // Alerts on User Account
   toolsOverdue: 'tool(s) overdue',
   toolsDueSoon: 'tool(s) due soon',
+  toolsLate: 'Late Returns',
   daysRemaining: 'To return within',
   remaining: 'remaining',
   daysRemainingShort: 'day(s) remaining',
@@ -619,6 +671,8 @@ const en = {
   alertLate: 'Late by',
   alertReturnSoon: 'due soon',
   alertReturnIn: 'To return in',
+  alertReminderOverdue: 'Send overdue reminder',
+  alertReminderSoon: 'Send reminder',
   onTime: 'On time',
   delay: 'Delay',
   
@@ -633,6 +687,13 @@ const en = {
   deleteUser: 'Delete User',
   userDeleted: 'User deleted',
   userCreated: 'User created',
+  userModified: 'User modified',
+  usersManagement: 'Users',
+  currentPassword: 'Current password',
+  currentPasswordHelp: 'Click to show the current password',
+  newPassword: 'New password',
+  show: 'Show',
+  hide: 'Hide',
   userModified: 'User modified',
   usersManagement: 'Users',
   
@@ -650,6 +711,22 @@ const en = {
   imageUrlOptional: 'Image URL (optional)',
   imageUrlPlaceholder: '/images/default-tool.jpg',
   toolsManagement: 'Tools',
+  
+  // Category Management
+  categoryManagement: 'Category Management',
+  newCategory: 'New Category',
+  categoryAll: 'All categories',
+  noCategories: 'No categories',
+  categoryName: 'Category name',
+  categoryNamePlaceholder: 'Category name',
+  categoryDeleted: 'Category deleted',
+  categoryCreated: 'Category created',
+  categoryModified: 'Category modified',
+  categoryWithTools: 'Cannot delete this category (contains tools)',
+  editCategory: 'Edit Category',
+  deleteCategory: 'Delete Category',
+  categoryAlreadyExists: 'A category with this name already exists',
+  toolsCount: 'Number of tools',
   
   // Filters (Admin)
   advancedFilters: 'Advanced Filters',
@@ -703,6 +780,13 @@ const en = {
   noChanges: 'ℹ️ No changes',
   success: 'Success',
   deleteConfirm: 'Are you sure?',
+  deleteUser: 'Are you sure you want to delete',
+  deleteTool: 'Are you sure you want to delete',
+  deleteCategory: 'Are you sure you want to delete',
+  attention: 'Warning',
+  activeBorrowsWarning: 'This user has',
+  activeBorrowsCount: 'active borrow(s)',
+  sureDeleteUser: 'Are you REALLY sure you want to delete this user?',
   close: 'Close',
   save: 'Save',
   back: 'Back',
@@ -796,6 +880,8 @@ const en = {
   processing_full: 'Processing...',
   noToolsFoundFilters: 'No tools match the filters',
   createPlaceholder: 'Create',
+  article_a: 'a',
+  article_an: 'an',
   
   // Email translations
   toolReminder: 'Return reminder: {toolName}',

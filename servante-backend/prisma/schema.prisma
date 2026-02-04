@@ -7,10 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tools     Tool[]
+}
+
 model Tool {
   id                String   @id @default(uuid())
   name              String
-  category          String
+  categoryId        String
   imageUrl          String
   size              String?
   drawer            String?
@@ -20,6 +29,7 @@ model Tool {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   borrows           Borrow[]
 }
 
@@ -28,6 +38,7 @@ model User {
   badgeId   String   @unique
   fullName  String
   email     String   @unique
+  password  String?
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

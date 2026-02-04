@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+export const API_BASE_URL = 'http://localhost:5000/api';
+const API_URL = API_BASE_URL;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -40,6 +41,15 @@ export const authAPI = {
     return response.data;
   },
 
+  userLogin: async (email: string, password: string) => {
+    const response = await api.post('/auth/user-login', { email, password });
+    if (response.data.success) {
+      localStorage.setItem('token', response.data.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.data.user));
+    }
+    return response.data;
+  },
+
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -71,6 +81,7 @@ export const usersAPI = {
     email?: string;
     badgeId?: string;
     role?: string;
+    password?: string;
   }) => {
     const response = await api.put(`/users/${id}`, userData);
     return response.data;
@@ -78,6 +89,31 @@ export const usersAPI = {
   
   delete: async (id: string) => {
     const response = await api.delete(`/users/${id}`);
+    return response.data;
+  }
+};
+
+// ============================================
+// CATEGORIES API (CRUD)
+// ============================================
+export const categoriesAPI = {
+  getAll: async () => {
+    const response = await api.get('/categories');
+    return response.data;
+  },
+
+  create: async (categoryData: { name: string }) => {
+    const response = await api.post('/categories', categoryData);
+    return response.data;
+  },
+
+  update: async (id: string, categoryData: { name: string }) => {
+    const response = await api.put(`/categories/${id}`, categoryData);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    const response = await api.delete(`/categories/${id}`);
     return response.data;
   }
 };

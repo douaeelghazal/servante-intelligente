@@ -14,8 +14,12 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
     // Outils disponibles
     const availableQuantity = totalTools.reduce((sum, tool) => sum + tool.availableQuantity, 0);
 
-    // Outils empruntés
-    const borrowedQuantity = totalTools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0);
+    // Outils empruntés (nombre d'emprunts actifs)
+    const activeBorrows = await prisma.borrow.count({
+      where: {
+        status: 'ACTIVE'
+      }
+    });
 
     // Utilisateurs actifs ce mois
     const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30));
@@ -40,7 +44,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
         totalTools: totalCount,
         totalQuantity,
         availableQuantity,
-        borrowedQuantity,
+        borrowedQuantity: activeBorrows,
         activeUsers: activeUsers.length,
         availabilityRate
       }
@@ -57,6 +61,20 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
 // ✅ Analyses outils - Détails d'utilisation
 export const getToolsAnalytics = async (req: Request, res: Response) => {
   try {
+    const { month } = req.query;
+    
+    // Déterminer la plage de dates si un mois est spécifié
+    let borrowDateFilter: any = {};
+    if (month && typeof month === 'string') {
+      const [year, monthNum] = month.split('-');
+      const startDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(monthNum), 1);
+      borrowDateFilter = {
+        gte: startDate,
+        lt: endDate
+      };
+    }
+
     // Tous les outils
     const tools = await prisma.tool.findMany();
     const totalQuantity = tools.reduce((sum, tool) => sum + tool.totalQuantity, 0);
@@ -69,7 +87,8 @@ export const getToolsAnalytics = async (req: Request, res: Response) => {
     const completedBorrows = await prisma.borrow.findMany({
       where: {
         status: 'RETURNED',
-        returnDate: { not: null }
+        returnDate: { not: null },
+        ...(Object.keys(borrowDateFilter).length > 0 && { borrowDate: borrowDateFilter })
       }
     });
 
@@ -101,15 +120,44 @@ export const getToolsAnalytics = async (req: Request, res: Response) => {
       }
     });
 
-    // Distribution par catégorie
-    const byCategory = await prisma.tool.groupBy({
-      by: ['category'],
-      _sum: {
-        borrowedQuantity: true,
-        totalQuantity: true,
-        availableQuantity: true
+    // Distribution par catégorie (filtré par mois si spécifié)
+    const borrowsByCategory = await prisma.borrow.findMany({
+      where: {
+        ...(Object.keys(borrowDateFilter).length > 0 && { borrowDate: borrowDateFilter })
+      },
+      include: {
+        tool: true
       }
     });
+
+    // Grouper par catégorie
+    const categoryMap = new Map<string, { borrowed: number; total: number; available: number }>();
+    
+    for (const tool of tools) {
+      if (!categoryMap.has(tool.category)) {
+        categoryMap.set(tool.category, { borrowed: 0, total: 0, available: 0 });
+      }
+      const cat = categoryMap.get(tool.category)!;
+      cat.total += tool.totalQuantity;
+      cat.available += tool.availableQuantity;
+    }
+
+    // Compter les emprunts par catégorie pour le mois spécifié
+    let totalBorrowsCount = 0;
+    for (const borrow of borrowsByCategory) {
+      const cat = categoryMap.get(borrow.tool.category);
+      if (cat) {
+        cat.borrowed += 1;
+        totalBorrowsCount += 1;
+      }
+    }
+
+    const byCategory = Array.from(categoryMap.entries()).map(([name, data]) => ({
+      name,
+      total: data.total,
+      borrowed: data.borrowed,
+      available: data.available
+    }));
 
     res.json({
       success: true,
@@ -117,12 +165,8 @@ export const getToolsAnalytics = async (req: Request, res: Response) => {
         utilizationRate,
         averageBorrowDays: averageBorrowDays.toFixed(1),
         toolsNeedingMaintenance: toolsNeedingMaintenance.length,
-        byCategory: byCategory.map(cat => ({
-          name: cat.category,
-          total: cat._sum.totalQuantity || 0,
-          borrowed: cat._sum.borrowedQuantity || 0,
-          available: cat._sum.availableQuantity || 0
-        }))
+        totalBorrows: totalBorrowsCount,
+        byCategory
       }
     });
   } catch (error) {
@@ -260,19 +304,21 @@ export const getStockAlerts = async (req: Request, res: Response) => {
           lte: 2 // Alerte si 2 ou moins disponibles
         }
       },
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        availableQuantity: true,
-        totalQuantity: true
+      include: {
+        category: true
       }
     });
 
     res.json({
       success: true,
       alerts: tools.length,
-      data: tools
+      data: tools.map(tool => ({
+        id: tool.id,
+        name: tool.name,
+        category: tool.category.name,
+        availableQuantity: tool.availableQuantity,
+        totalQuantity: tool.totalQuantity
+      }))
     });
   } catch (error) {
     console.error('❌ Erreur getStockAlerts:', error);
@@ -286,7 +332,11 @@ export const getStockAlerts = async (req: Request, res: Response) => {
 // ✅ Vue d'ensemble inventaire
 export const getInventoryOverview = async (req: Request, res: Response) => {
   try {
-    const tools = await prisma.tool.findMany();
+    const tools = await prisma.tool.findMany({
+      include: {
+        category: true
+      }
+    });
 
     const totalStock = tools.reduce((sum, tool) => sum + tool.totalQuantity, 0);
     const availableStock = tools.reduce((sum, tool) => sum + tool.availableQuantity, 0);
@@ -295,14 +345,28 @@ export const getInventoryOverview = async (req: Request, res: Response) => {
     const availabilityRate = totalStock > 0 ? Math.round((availableStock / totalStock) * 100) : 0;
 
     // Stock par catégorie
-    const byCategory = await prisma.tool.groupBy({
-      by: ['category'],
-      _sum: {
-        totalQuantity: true,
-        borrowedQuantity: true,
-        availableQuantity: true
+    const categoryMap = new Map();
+    tools.forEach(tool => {
+      const categoryName = tool.category.name;
+      if (!categoryMap.has(categoryName)) {
+        categoryMap.set(categoryName, {
+          total: 0,
+          borrowed: 0,
+          available: 0
+        });
       }
+      const cat = categoryMap.get(categoryName);
+      cat.total += tool.totalQuantity;
+      cat.borrowed += tool.borrowedQuantity;
+      cat.available += tool.availableQuantity;
     });
+
+    const byCategory = Array.from(categoryMap.entries()).map(([name, data]) => ({
+      name,
+      total: data.total,
+      borrowed: data.borrowed,
+      available: data.available
+    }));
 
     res.json({
       success: true,
@@ -311,12 +375,7 @@ export const getInventoryOverview = async (req: Request, res: Response) => {
         availableStock,
         borrowedStock,
         availabilityRate,
-        byCategory: byCategory.map(cat => ({
-          name: cat.category,
-          total: cat._sum.totalQuantity || 0,
-          borrowed: cat._sum.borrowedQuantity || 0,
-          available: cat._sum.availableQuantity || 0
-        }))
+        byCategory
       }
     });
   } catch (error) {

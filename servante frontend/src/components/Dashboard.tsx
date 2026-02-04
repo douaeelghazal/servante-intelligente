@@ -48,6 +48,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, language }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'tools' | 'users' | 'inventory'>('overview');
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
   // État pour les données
   const [dashboardOverview, setDashboardOverview] = useState<DashboardOverview | null>(null);
@@ -65,7 +66,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, language }) => {
 
       const [overview, tools, users, trend, alerts, inventory] = await Promise.all([
         fetchDashboardOverview(token),
-        fetchToolsAnalytics(token),
+        fetchToolsAnalytics(token, selectedMonth),
         fetchUsersAnalytics(token),
         fetchBorrowsTrend(token),
         fetchStockAlerts(token),
@@ -88,7 +89,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, language }) => {
 
   useEffect(() => {
     loadData();
-  }, [token]);
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadData();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [token, selectedMonth]);
 
   if (loading) {
     return (
@@ -253,13 +261,51 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, language }) => {
               </div>
             )}
           </div>
+
+          {/* Distribution par catégorie */}
+          {toolsAnalytics && toolsAnalytics.byCategory.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold mb-2">
+                    {language === 'fr' ? 'Utilisation par catégorie' : 'Usage by Category'}
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    {language === 'fr' ? 'Total nombre d\'emprunts' : 'Total number of borrows'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {language === 'fr' ? 'Filtrer par mois' : 'Filter by Month'}
+                  </label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={toolsAnalytics.byCategory}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="borrowed" fill="#FF6B6B" name={language === 'fr' ? 'Empruntés' : 'Borrowed'} />
+                  <Bar dataKey="available" fill="#4ECDC4" name={language === 'fr' ? 'Disponibles' : 'Available'} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
 
       {/* Contenu de l'onglet Tools */}
       {activeTab === 'tools' && toolsAnalytics && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <StatCard
               icon={TrendingUp}
               label={language === 'fr' ? 'Taux d\'utilisation' : 'Utilization Rate'}
@@ -275,14 +321,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, language }) => {
               label={language === 'fr' ? 'Maintenance requise' : 'Maintenance Required'}
               value={toolsAnalytics.toolsNeedingMaintenance}
             />
+            <StatCard
+              icon={Package}
+              label={language === 'fr' ? 'Total emprunts' : 'Total Borrows'}
+              value={toolsAnalytics.totalBorrows}
+            />
           </div>
 
           {/* Distribution par catégorie */}
           {toolsAnalytics.byCategory.length > 0 && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">
-                {language === 'fr' ? 'Utilisation par catégorie' : 'Usage by Category'}
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold mb-2">
+                    {language === 'fr' ? 'Utilisation par catégorie' : 'Usage by Category'}
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    {language === 'fr' ? 'Total nombre d\'emprunts' : 'Total number of borrows'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {language === 'fr' ? 'Filtrer par mois' : 'Filter by Month'}
+                  </label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={toolsAnalytics.byCategory}>
                   <CartesianGrid strokeDasharray="3 3" />

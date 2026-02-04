@@ -13,6 +13,7 @@ interface ToolsAnalytics {
   utilizationRate: number;
   averageBorrowDays: string;
   toolsNeedingMaintenance: number;
+  totalBorrows: number;
   byCategory: Array<{
     name: string;
     total: number;
@@ -60,7 +61,7 @@ interface InventoryOverview {
 
 // ✅ Récupérer l'aperçu du tableau de bord
 export const fetchDashboardOverview = async (token: string): Promise<DashboardOverview> => {
-  const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard/overview`, {
+  const response = await fetch(`${API_BASE_URL}/analytics/dashboard/overview`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -73,8 +74,13 @@ export const fetchDashboardOverview = async (token: string): Promise<DashboardOv
 };
 
 // ✅ Récupérer les analyses des outils
-export const fetchToolsAnalytics = async (token: string): Promise<ToolsAnalytics> => {
-  const response = await fetch(`${API_BASE_URL}/api/analytics/tools`, {
+export const fetchToolsAnalytics = async (token: string, month?: string): Promise<ToolsAnalytics> => {
+  const url = new URL(`${API_BASE_URL}/analytics/tools`);
+  if (month) {
+    url.searchParams.append('month', month);
+  }
+  
+  const response = await fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -88,7 +94,7 @@ export const fetchToolsAnalytics = async (token: string): Promise<ToolsAnalytics
 
 // ✅ Récupérer les analyses utilisateurs
 export const fetchUsersAnalytics = async (token: string): Promise<UsersAnalytics> => {
-  const response = await fetch(`${API_BASE_URL}/api/analytics/users`, {
+  const response = await fetch(`${API_BASE_URL}/analytics/users`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -102,7 +108,7 @@ export const fetchUsersAnalytics = async (token: string): Promise<UsersAnalytics
 
 // ✅ Récupérer la tendance des emprunts
 export const fetchBorrowsTrend = async (token: string): Promise<BorrowsTrend[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/analytics/borrows/trend`, {
+  const response = await fetch(`${API_BASE_URL}/analytics/borrows/trend`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -116,7 +122,7 @@ export const fetchBorrowsTrend = async (token: string): Promise<BorrowsTrend[]> 
 
 // ✅ Récupérer les alertes de stock
 export const fetchStockAlerts = async (token: string): Promise<StockAlert[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/analytics/stock/alerts`, {
+  const response = await fetch(`${API_BASE_URL}/analytics/stock/alerts`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -130,7 +136,7 @@ export const fetchStockAlerts = async (token: string): Promise<StockAlert[]> => 
 
 // ✅ Récupérer l'aperçu de l'inventaire
 export const fetchInventoryOverview = async (token: string): Promise<InventoryOverview> => {
-  const response = await fetch(`${API_BASE_URL}/api/analytics/inventory/overview`, {
+  const response = await fetch(`${API_BASE_URL}/analytics/inventory/overview`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'

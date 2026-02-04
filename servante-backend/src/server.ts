@@ -13,6 +13,9 @@ import toolsRoutes from './routes/toolsRoutes';
 import borrowsRoutes from './routes/borrowsRoutes';
 import usersRoutes from './routes/usersRoutes';
 import uploadRoutes from './routes/uploadRoutes';
+import hardwareRoutes from './routes/hardwareRoutes';
+import categoriesRoutes from './routes/categoriesRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
 
 // Importer les middlewares
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -60,10 +63,13 @@ app.get('/health', (req, res) => {
 
 // Routes API
 app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoriesRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api/borrows', borrowsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/hardware', hardwareRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // ============================================
 // GESTION DES ERREURS

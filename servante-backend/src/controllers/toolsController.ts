@@ -9,13 +9,36 @@ const prisma = new PrismaClient();
 export const getAllTools = async (req: Request, res: Response): Promise<void> => {
   try {
     const tools = await prisma.tool.findMany({
+      include: {
+        category: true,
+        borrows: {
+          where: {
+            status: {
+              in: ['ACTIVE', 'OVERDUE']
+            }
+          }
+        }
+      },
       orderBy: { name: 'asc' }
+    });
+
+    // Calculate quantities dynamically from actual borrows
+    const toolsWithCorrectQuantities = tools.map(tool => {
+      const activeBorrows = tool.borrows.length;
+      const availableQuantity = Math.max(0, tool.totalQuantity - activeBorrows);
+      
+      return {
+        ...tool,
+        availableQuantity,
+        borrowedQuantity: activeBorrows,
+        borrows: undefined
+      };
     });
 
     res.status(200).json({
       success: true,
-      count: tools.length,
-      data: tools
+      count: toolsWithCorrectQuantities.length,
+      data: toolsWithCorrectQuantities
     });
   } catch (error) {
     console.error('❌ Erreur getAllTools:', error);
@@ -32,18 +55,39 @@ export const getAllTools = async (req: Request, res: Response): Promise<void> =>
 export const getAvailableTools = async (req: Request, res: Response): Promise<void> => {
   try {
     const tools = await prisma.tool.findMany({
-      where: {
-        availableQuantity: {
-          gt: 0
+      include: {
+        category: true,
+        borrows: {
+          where: {
+            status: {
+              in: ['ACTIVE', 'OVERDUE']
+            }
+          }
         }
       },
       orderBy: { name: 'asc' }
     });
 
+    // Calculate quantities dynamically from actual borrows
+    const toolsWithCorrectQuantities = tools.map(tool => {
+      const activeBorrows = tool.borrows.length;
+      const availableQuantity = Math.max(0, tool.totalQuantity - activeBorrows);
+      
+      return {
+        ...tool,
+        availableQuantity,
+        borrowedQuantity: activeBorrows,
+        borrows: undefined
+      };
+    });
+
+    // Filter only tools with available quantity
+    const availableTools = toolsWithCorrectQuantities.filter(t => t.availableQuantity > 0);
+
     res.json({
       success: true,
-      count: tools.length,
-      data: tools
+      count: availableTools.length,
+      data: availableTools
     });
   } catch (error) {
     console.error('❌ Erreur getAvailableTools:', error);
@@ -64,6 +108,7 @@ export const getToolById = async (req: Request, res: Response): Promise<void> =>
     const tool = await prisma.tool.findUnique({
       where: { id },
       include: {
+        category: true,
         borrows: {
           where: { status: 'ACTIVE' },
           include: {
@@ -221,17 +266,25 @@ export const deleteTool = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
 
+    // ✅ VALIDATION STRICTE - Vérifier que l'ID n'est pas vide
+    if (!id || id.trim() === '') {
+      console.error('❌ ID invalide pour supprimer un outil:', id);
+      res.status(400).json({
+        success: false,
+        message: 'ID d\'outil invalide'
+      });
+      return;
+    }
+
+    console.log('🗑️ Suppression de l\'outil:', id);
+
     // Vérifier si l'outil existe
     const tool = await prisma.tool.findUnique({
-      where: { id },
-      include: {
-        borrows: {
-          where: { status: 'ACTIVE' }
-        }
-      }
+      where: { id }
     });
 
     if (!tool) {
+      console.log('❌ Outil non trouvé:', id);
       res.status(404).json({
         success: false,
         message: 'Outil non trouvé'
@@ -239,18 +292,40 @@ export const deleteTool = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    console.log('✅ Outil trouvé:', tool.name);
+
     // Vérifier s'il y a des emprunts actifs
-    if (tool.borrows.length > 0) {
+    const activeBorrows = await prisma.borrow.findMany({
+      where: {
+        toolId: id,
+        status: 'ACTIVE'
+      }
+    });
+
+    console.log('📊 Emprunts actifs:', activeBorrows.length);
+
+    if (activeBorrows.length > 0) {
       res.status(400).json({
         success: false,
-        message: `Impossible de supprimer: ${tool.borrows.length} emprunt(s) actif(s)`
+        message: `Impossible de supprimer: ${activeBorrows.length} emprunt(s) actif(s)`
       });
       return;
     }
 
+    // Supprimer tous les emprunts liés (RETURNED et OVERDUE)
+    console.log('🧹 Suppression des emprunts liés...');
+    const deletedBorrows = await prisma.borrow.deleteMany({
+      where: { toolId: id }
+    });
+    console.log('✅ Emprunts supprimés:', deletedBorrows.count);
+
+    // Ensuite supprimer l'outil
+    console.log('🗑️ Suppression de l\'outil...');
     await prisma.tool.delete({
       where: { id }
     });
+
+    console.log('✅ Outil supprimé avec succès:', id);
 
     res.status(200).json({
       success: true,

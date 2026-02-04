@@ -27,6 +27,8 @@ import {
   RefreshCw,
   Download,
   Eye,
+  EyeOff,
+  Mail,
   AlertCircle,
   RotateCcw,
   Wrench,
@@ -35,7 +37,8 @@ import {
   History,
   Bell,
   CreditCard,
-  SortAsc
+  SortAsc,
+  Plus
 } from "lucide-react";
 import { 
   BarChart, 
@@ -69,7 +72,7 @@ import logo from './images/emines_logo.png';
 // ============================================
 // IMPORTS - API Backend
 // ============================================
-import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI } from './services/api';
+import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI, categoriesAPI } from './services/api';
 import { useEffect } from 'react';
 
 // ============================================
@@ -118,6 +121,7 @@ type User = {
   email: string;
   badgeId: string;
   role: 'student' | 'professor' | 'technician';
+  password?: string | null;
   createdAt?: Date;
 };
 
@@ -147,6 +151,7 @@ type Screen =
   | 'tool-selection' 
   | 'confirm-borrow' 
   | 'admin-login' 
+  | 'user-login'
   | 'admin-dashboard'
   | 'admin-overview'
   | 'admin-tools-analysis'
@@ -204,6 +209,21 @@ const categoryToKeyMap: Record<string, string> = {
 
 const getCategoryTranslationKey = (category: string): string => {
   return categoryToKeyMap[category] || category;
+};
+
+// ============================================
+// SIZE TRANSLATION KEY MAPPING
+// ============================================
+const sizeToKeyMap: Record<string, string> = {
+  'Grand': 'sizeGrand',
+  'Moyen': 'sizeMoyen',
+  'Petit': 'sizePetit',
+  'Mini': 'sizeMini'
+};
+
+const getSizeTranslationKey = (size: string | undefined): string => {
+  if (!size) return '-';
+  return sizeToKeyMap[size] || size;
 };
 
 // ============================================
@@ -512,11 +532,11 @@ const UserMenu: React.FC<{
       {menuOpen && (
         <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl overflow-hidden border border-slate-200 z-50">
           <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-700 to-blue-900">
-            <p className="font-bold text-slate-900">
+            <p className="font-bold text-white">
               {currentUser.fullName}
             </p>
-            <p className="text-sm text-slate-600">{currentUser.email}</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-sm text-white">{currentUser.email}</p>
+            <p className="text-xs text-blue-100 mt-1">
               {currentUser.badgeID}
             </p>
           </div>
@@ -1002,6 +1022,7 @@ export default function App() {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES);
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1023,12 +1044,22 @@ const [usersLoading, setUsersLoading] = useState(false);
 const [selectedUser, setSelectedUser] = useState<User | null>(null);
 const [userModalOpen, setUserModalOpen] = useState(false);
 const [userModalMode, setUserModalMode] = useState<ModalMode>('create');
+const [showDeleteConfirmWithBorrows, setShowDeleteConfirmWithBorrows] = useState(false);
+const [userActiveBorrowsCount, setUserActiveBorrowsCount] = useState(0);
+const [showCurrentPassword, setShowCurrentPassword] = useState(false);
 
 // États pour la gestion des outils
 const [selectedToolForEdit, setSelectedToolForEdit] = useState<Tool | null>(null);
 const [toolModalOpen, setToolModalOpen] = useState(false);
 const [toolModalMode, setToolModalMode] = useState<ModalMode>('create');
 const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+
+// États pour la gestion des catégories
+const [categories, setCategories] = useState<any[]>([]);
+const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+const [categoryModalMode, setCategoryModalMode] = useState<ModalMode>('create');
+const [selectedCategoryForEdit, setSelectedCategoryForEdit] = useState<any | null>(null);
+const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   // ✅ États pour les filtres admin
   const [adminFilters, setAdminFilters] = useState<AdminBorrowFilter>({
@@ -1040,6 +1071,7 @@ const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
     useEffect(() => {
   loadToolsFromBackend();
+  loadCategoriesFromBackend();
   loadBorrowsFromBackend();
   loadUsersFromBackend();
   loadCurrentUser();
@@ -1107,8 +1139,13 @@ const loadUsersFromBackend = async () => {
     const response = await usersAPI.getAll();
     
     if (response.success) {
-      setUsers(response.data);
-      console.log('✅ Utilisateurs chargés:', response.data.length);
+      // ✅ Normaliser les rôles en minuscules
+      const normalizedUsers = response.data.map((user: User) => ({
+        ...user,
+        role: (user.role?.toLowerCase() || 'student') as 'student' | 'professor' | 'technician'
+      }));
+      setUsers(normalizedUsers);
+      console.log('✅ Utilisateurs chargés:', normalizedUsers.length);
     }
   } catch (error) {
     console.error('❌ Erreur chargement utilisateurs:', error);
@@ -1157,23 +1194,32 @@ const reloadBorrows = async () => {
       
       if (response.success) {
         // Adapter les données du backend au format frontend
-        const adaptedTools = response.data.map((tool: any) => ({
-          id: tool.id,
-          name: tool.name,
-          category: tool.category,
-          image: tool.imageUrl,
-          totalQuantity: tool.totalQuantity,
-          availableQuantity: tool.availableQuantity,
-          borrowedQuantity: tool.borrowedQuantity,
-          size: tool.size || 'Moyen',
-          drawer: tool.drawer
-        }));
+        const adaptedTools = response.data.map((tool: any) => {
+          // Recalculate available/borrowed based on actual allBorrows to ensure consistency
+          const toolActiveBorrows = allBorrows.filter(b => 
+            b.toolId === tool.id && (b.status === 'active' || b.status === 'overdue')
+          ).length;
+          const calculatedAvailable = Math.max(0, tool.totalQuantity - toolActiveBorrows);
+          
+          return {
+            id: tool.id,
+            name: tool.name,
+            category: tool.category?.name || tool.category,
+            image: tool.imageUrl,
+            totalQuantity: tool.totalQuantity,
+            availableQuantity: calculatedAvailable,
+            borrowedQuantity: toolActiveBorrows,
+            size: tool.size || 'Moyen',
+            drawer: tool.drawer
+          };
+        });
         
         setTools(adaptedTools);
-        console.log(' Outils chargés depuis le backend:', adaptedTools.length);
+        console.log('✅ Outils chargés depuis le backend:', adaptedTools.length);
+        console.log('🛠️ Exemple outil:', adaptedTools[0]);
       }
     } catch (error) {
-      console.error(' Erreur chargement outils:', error);
+      console.error('❌ Erreur chargement outils:', error);
       // En cas d'erreur, utiliser les données de seed
       setTools([]);
     } finally {
@@ -1184,13 +1230,36 @@ const reloadBorrows = async () => {
   
 
   
-  const categories = [
+  const loadCategoriesFromBackend = async () => {
+    try {
+      setCategoriesLoading(true);
+      const response = await categoriesAPI.getAll();
+      
+      if (response.success) {
+        setCategories(response.data);
+        console.log('✅ Catégories chargées depuis le backend:', response.data.length);
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement catégories:', error);
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const hardcodedCategories = [
     'Tournevis', 
     'Clés', 
     'Pinces', 
     'Outils de marquage', 
     'Outils de coupe'
   ];
+
+  // Utiliser les catégories depuis l'API si disponibles, sinon utiliser les catégories codées en dur
+  const finalCategories = categories.length > 0 ? categories.map(c => c.name) : hardcodedCategories;
+
+  // Obtenir les catégories uniques depuis les outils
+  const toolCategories = [...new Set(tools.map(tool => tool.category))].filter(Boolean);
 
   const sizes = [
     { key: 'Grand', label: 'sizeGrand' },
@@ -1215,11 +1284,11 @@ const reloadBorrows = async () => {
   });
 
   if (sortOption === 'name-asc') {
-    filteredTools = [...filteredTools].sort((a, b) => a.name.localeCompare(b.name));
+    filteredTools = [...filteredTools].sort((a, b) => t(getToolTranslationKey(a.name)).localeCompare(t(getToolTranslationKey(b.name))));
   } else if (sortOption === 'name-desc') {
-    filteredTools = [...filteredTools].sort((a, b) => b.name.localeCompare(a.name));
+    filteredTools = [...filteredTools].sort((a, b) => t(getToolTranslationKey(b.name)).localeCompare(t(getToolTranslationKey(a.name))));
   } else if (sortOption === 'category') {
-    filteredTools = [...filteredTools].sort((a, b) => a.category.localeCompare(b.category));
+    filteredTools = [...filteredTools].sort((a, b) => t(getCategoryTranslationKey(a.category)).localeCompare(t(getCategoryTranslationKey(b.category))));
   }
 
   const totalTools = tools.reduce((sum, tool) => sum + tool.totalQuantity, 0);
@@ -1236,6 +1305,10 @@ const borrowedCount = tools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0
 
   const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
+  }, []);
+
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
   }, []);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1364,6 +1437,37 @@ const handleBadgeScan = async () => {
   }
 };
 
+// ============================================
+// ÉCRAN - Connexion utilisateur (Email + Mot de passe)
+// ============================================
+const handleUserLogin = async () => {
+  try {
+    if (!email || !password) {
+      setLoginError(t('emailPasswordRequired') || 'Email et mot de passe requis');
+      return;
+    }
+
+    setLoading(true);
+    const result = await authAPI.userLogin(email, password);
+    
+    if (result.success) {
+      console.log('✅ User login réussi:', result.data.user);
+      setCurrentUser(result.data.user);
+      setEmail('');
+      setPassword('');
+      setLoginError('');
+      setCurrentScreen('tool-selection');
+    } else {
+      setLoginError(result.message || t('invalidCredentials') || 'Email ou mot de passe incorrect');
+    }
+  } catch (error: any) {
+    console.error('❌ Erreur user login:', error);
+    setLoginError(t('connectionError') || 'Erreur de connexion');
+  } finally {
+    setLoading(false);
+  }
+};
+
 // ✅ ÉCRAN BADGE SCAN
 if (currentScreen === 'badge-scan') {
   return (
@@ -1408,6 +1512,14 @@ if (currentScreen === 'badge-scan') {
             <p className="text-sm text-gray-600 mt-2">{t('loading')}</p>
           </div>
         )}
+
+        {/* Bouton pour connexion utilisateur */}
+        <button 
+          onClick={() => setCurrentScreen('user-login')} 
+          className="mt-8 px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-all font-bold shadow-md"
+        >
+          {t('userLogin')}
+        </button>
       </main>
     </div>
   );
@@ -1611,7 +1723,7 @@ if (currentScreen === 'tool-selection') {
                         {t('categoryAll')}
                       </button>
                       
-                      {categories.map(cat => (
+                      {toolCategories.map(cat => (
                         <button 
                           key={cat} 
                           onClick={() => setSelectedCategory(cat)} 
@@ -1775,12 +1887,6 @@ className={`group p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition
                       </div>
                     </div>
 
-                    {tool.borrowedQuantity > 0 && (
-  <div className="text-xs text-amber-600 text-center font-medium mt-2">
-    {tool.borrowedQuantity} {t('borrowed')}
-  </div>
-)}
-                    
                     {tool.availableQuantity > 0 && (
   <button className="w-full py-2.5 bg-[#0f2b56] text-white font-bold rounded-xl hover:bg-[#0a1f3d] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
     <Package className="w-4 h-4" />
@@ -2142,37 +2248,6 @@ if (currentScreen === 'user-account') {
           </div>
         </div>
 
-        {/* ✅ ALERTES - Outils en retard */}
-        {overdueBorrows.length > 0 && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 mb-6 animate-pulse">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-red-100 rounded-xl">
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-red-900 mb-2">
-                  {overdueBorrows.length} {overdueBorrows.length > 1 ? t('toolsLate') : t('toolsLate')}
-                </h3>
-                <ul className="space-y-2">
-                  {overdueBorrows.map(b => (
-                    <li key={b.id} className="text-sm text-red-700">
-                      <strong>{getTranslatedToolName(b.toolName)}</strong> - {t('overdue')} de <strong>{b.daysLate} {b.daysLate > 1 ? t('days') : t('days')}</strong>
-                    </li>
-                  ))}
-                </ul>
-                <button 
-                  onClick={() => {
-                    overdueBorrows.forEach(b => sendEmailReminder(b, 'overdue'));
-                  }}
-                  className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold text-sm"
-                >
-                  {t('alertReminderOverdue')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ✅ ALERTES - Outils à retourner bientôt */}
         {dueSoonBorrows.length > 0 && (
           <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 mb-6">
@@ -2182,12 +2257,12 @@ if (currentScreen === 'user-account') {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-amber-900 mb-2">
-                  {dueSoonBorrows.length} {dueSoonBorrows.length > 1 ? t('toolsDueSoon') : t('toolsDueSoon')}
+                  ⏰ {dueSoonBorrows.length} {dueSoonBorrows.length > 1 ? t('toolsDueSoon') : t('toolsDueSoon')}
                 </h3>
                 <ul className="space-y-2">
                   {dueSoonBorrows.map(b => (
                     <li key={b.id} className="text-sm text-amber-700">
-                      <strong>{getTranslatedToolName(b.toolName)}</strong> - {t('alertReturnIn')} <strong>{b.daysUntilDue} {b.daysUntilDue > 1 ? t('days') : t('days')}</strong>
+                      <strong>{getTranslatedToolName(b.toolName)}</strong> - {t('alertReturnIn')} <strong>{b.daysUntilDue} {b.daysUntilDue > 1 ? t('days') : t('day')}</strong>
                     </li>
                   ))}
                 </ul>
@@ -2213,9 +2288,9 @@ if (currentScreen === 'user-account') {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-yellow-900">
-                  ⚠️ {warnings} {t('warnings')} - {lateReturns} {t('lateReturns')}
+                  ⚠️ {warnings} {warnings > 1 ? t('warnings') : t('warning')} | {lateReturns} {lateReturns > 1 ? t('lateReturns') : t('lateCount')}
                 </h3>
-                <p className="text-sm text-yellow-700">
+                <p className="text-sm text-yellow-700 mt-1">
                   {t('improveReturnRate')}
                 </p>
               </div>
@@ -2431,6 +2506,129 @@ if (currentScreen === 'user-account') {
   );
 }
   // ============================================
+  // ÉCRAN - Connexion utilisateur (Email + Mot de passe)
+  // ============================================
+  if (currentScreen === 'user-login') {
+    return (
+      <div className="min-h-screen relative overflow-hidden hero flex flex-col items-center justify-center px-6">
+        <Bubbles />
+        
+        {/* Langue en haut gauche */}
+        <div className="fixed top-6 left-6 z-50">
+          <LanguageSelector />
+        </div>
+        
+        {/* Logo en haut gauche mais décalé */}
+        <div className="fixed top-6 left-40 z-50">
+          <Logo />
+        </div>
+        
+        <div className="max-w-md w-full p-8 rounded-2xl bg-white shadow-xl border border-slate-200 relative">
+          <button 
+            onClick={() => {
+              setCurrentScreen('badge-scan');
+              setLoginError('');
+              setEmail('');
+              setPassword('');
+            }} 
+            className="absolute top-4 right-4 p-2 rounded-xl hover:bg-slate-100 transition-all"
+          >
+            <X className="w-5 h-5 text-slate-600" />
+          </button>
+          
+          <div className="text-center mb-8">
+            <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center shadow-lg">
+              <Mail className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="mt-6 text-3xl font-bold text-slate-900">{t('userLogin') || 'User Login'}</h2>
+            <p className="text-sm text-slate-600 mt-2">{t('loginWithEmail') || 'Login with email and password'}</p>
+          </div>
+
+          {/* Notification d'erreur */}
+          {loginError && (
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm font-semibold text-red-600">{loginError}</p>
+            </div>
+          )}
+
+          {/* Email field */}
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-slate-700 mb-3">{t('email')}</label>
+            <input 
+              type="email"
+              value={email} 
+              onChange={handleEmailChange}
+              placeholder={t('email')} 
+              className="w-full px-5 py-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-green-600 focus:outline-none transition-all font-medium" 
+              autoComplete="email"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleUserLogin();
+                }
+              }}
+            />
+          </div>
+
+          {/* Password field */}
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-slate-700 mb-3">{t('password')}</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? 'text' : 'password'}
+                value={password} 
+                onChange={handlePasswordChange}
+                placeholder={t('password')} 
+                className="w-full px-5 py-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-green-600 focus:outline-none transition-all font-medium pr-12" 
+                autoComplete="off"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleUserLogin();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button 
+              onClick={() => { 
+                setEmail('');
+                setPassword(''); 
+                setLoginError('');
+                setCurrentScreen('badge-scan'); 
+              }} 
+              className="flex-1 px-6 py-4 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all font-bold text-slate-700 shadow-md disabled:opacity-50"
+              disabled={loading}
+            >
+              {t('cancel')}
+            </button>
+            
+            <button 
+              onClick={handleUserLogin}
+              disabled={loading}
+              className="flex-1 px-6 py-4 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? `${t('loading')}...` : t('login')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
   // ÉCRAN 4 - Connexion administrateur
   // ============================================
   if (currentScreen === 'admin-login') {
@@ -2556,7 +2754,12 @@ if (currentScreen === 'user-account') {
 // ✅ ÉCRAN 5 - Vue d'ensemble
 const calculateOverviewStats = (tools: Tool[], borrows: BorrowRecord[]) => {
   const totalTools = tools.reduce((sum, tool) => sum + tool.totalQuantity, 0);
-  const availableCount = tools.reduce((sum, tool) => sum + tool.availableQuantity, 0);
+  
+  // Calculate active borrows (status is 'active' or 'overdue')
+  const activeBorrows = borrows.filter(b => b.status === 'active' || b.status === 'overdue').length;
+  
+  // Available tools = total tools - active borrows
+  const availableCount = totalTools - activeBorrows;
   const borrowedCount = tools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0);
   
   const thirtyDaysAgo = new Date();
@@ -2569,9 +2772,9 @@ const calculateOverviewStats = (tools: Tool[], borrows: BorrowRecord[]) => {
     ? parseFloat(((availableCount - lastMonthAvailable) / lastMonthAvailable * 100).toFixed(1))
     : 0;
   
-  const lastMonthBorrowed = Math.round(borrowedCount * 1.02);
+  const lastMonthBorrowed = Math.round(activeBorrows * 1.02);
   const borrowedGrowth = lastMonthBorrowed > 0
-    ? parseFloat(((borrowedCount - lastMonthBorrowed) / lastMonthBorrowed * 100).toFixed(1))
+    ? parseFloat(((activeBorrows - lastMonthBorrowed) / lastMonthBorrowed * 100).toFixed(1))
     : 0;
   
   const lastMonthUsers = Math.round(activeUsers * 0.89);
@@ -2582,7 +2785,7 @@ const calculateOverviewStats = (tools: Tool[], borrows: BorrowRecord[]) => {
   return {
     totalTools,
     availableCount,
-    borrowedCount,
+    borrowedCount: activeBorrows,
     activeUsers,
     availabilityGrowth,
     borrowedGrowth,
@@ -2687,11 +2890,14 @@ const calculateUsageByCategory = (tools: Tool[], borrows: BorrowRecord[]) => {
     }
   });
   
-  // ✅ CORRECTION: Compter les emprunts par catégorie
+  // ✅ CORRECTION: Compter SEULEMENT les emprunts ACTIFS par catégorie
   borrows.forEach(borrow => {
-    const tool = tools.find(t => t.id === borrow.toolId);
-    if (tool && categoryUsage[tool.category]) {
-      categoryUsage[tool.category].emprunts++;
+    // Only count ACTIVE and OVERDUE borrows, not returned ones
+    if (borrow.status === 'active' || borrow.status === 'overdue') {
+      const tool = tools.find(t => t.id === borrow.toolId);
+      if (tool && categoryUsage[tool.category]) {
+        categoryUsage[tool.category].emprunts++;
+      }
     }
   });
   
@@ -2714,9 +2920,11 @@ const calculateInsights = (tools: Tool[], borrows: BorrowRecord[]) => {
     ? Math.round((onTimeReturns / returnedBorrows.length) * 100) 
     : 100;
   
-  const mostPopularCategory = categoryDist.reduce((max, cat) => 
-    cat.value > max.value ? cat : max
-  , categoryDist[0]);
+  const mostPopularCategory = categoryDist.length > 0 
+    ? categoryDist.reduce((max, cat) => 
+        cat.value > max.value ? cat : max
+      , categoryDist[0])
+    : { name: 'N/A', value: 0, color: '#999' };
   
   // ✅ CORRECTION: Calculer le vrai pourcentage de popularité
   const totalTools = tools.reduce((sum, t) => sum + t.totalQuantity, 0);
@@ -2724,15 +2932,17 @@ const calculateInsights = (tools: Tool[], borrows: BorrowRecord[]) => {
     ? Math.round((mostPopularCategory.value / totalTools) * 100) 
     : 0;
   
-  // ✅ CORRECTION: Compter les outils actuellement empruntés (pas le stock critique)
-  const currentlyBorrowed = tools.reduce((sum, t) => sum + t.borrowedQuantity, 0);
+  // ✅ CORRECTION: Compter les EMPRUNTS ACTIFS réels (pas le champ denormalisé)
+  const currentlyBorrowed = borrows.filter(b => 
+    b.status === 'active' || b.status === 'overdue'
+  ).length;
   
   return {
     userGrowth: overviewStats.userGrowth,
     mostPopularCategory: mostPopularCategory.name,
     popularPercent,
     onTimeRate,
-    criticalStock: currentlyBorrowed  // ✅ CORRIGÉ
+    criticalStock: currentlyBorrowed  // ✅ Compte réel d'emprunts actifs
   };
 };
 
@@ -2878,17 +3088,30 @@ const calculateUserStats = (borrows: BorrowRecord[]) => {
   };
 }; // ← ACCOLADE FERMANTE AJOUTÉE
 
-const calculateUserSegmentation = (borrows: BorrowRecord[]) => {
+const calculateUserSegmentation = (borrows: BorrowRecord[], usersList: User[]) => {
   const userRoles: { [key: string]: string } = {};
   
   borrows.forEach(b => {
-    if (!userRoles[b.userName]) {
-      if (b.userEmail?.includes('prof')) {
-        userRoles[b.userName] = 'professor';
-      } else if (b.userEmail?.includes('tech')) {
-        userRoles[b.userName] = 'technician';
+    // ✅ Use email as unique key since it doesn't change and is unique
+    const emailKey = b.userEmail || b.userName;
+    if (!userRoles[emailKey]) {
+      // ✅ Look up user by email FIRST (most reliable), then by name
+      let user = usersList.find(u => u.email === b.userEmail);
+      if (!user && b.userName) {
+        user = usersList.find(u => u.fullName === b.userName);
+      }
+      
+      if (user) {
+        userRoles[emailKey] = user.role;
       } else {
-        userRoles[b.userName] = 'student';
+        // Fallback: déduire du email si l'utilisateur n'est pas trouvé
+        if (b.userEmail?.includes('prof')) {
+          userRoles[emailKey] = 'professor';
+        } else if (b.userEmail?.includes('tech')) {
+          userRoles[emailKey] = 'technician';
+        } else {
+          userRoles[emailKey] = 'student';
+        }
       }
     }
   });
@@ -2953,7 +3176,9 @@ console.log('📊 Résultat distribution:', categoryDistributionDynamic);
   return (
     <div className="min-h-screen bg-gray-50">
       <Logo />
-      <LanguageSelector />
+      <div className="fixed top-6 right-6 z-50">
+        <LanguageSelector />
+      </div>
       
       <AdminSidebar currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
       
@@ -3241,7 +3466,9 @@ if (currentScreen === 'admin-tools-analysis') {
   return (
     <div className="min-h-screen bg-gray-50">
       <Logo />
-      <LanguageSelector />
+      <div className="fixed top-6 right-6 z-50">
+        <LanguageSelector />
+      </div>
       
       <AdminSidebar currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
       
@@ -3389,11 +3616,11 @@ if (currentScreen === 'admin-tools-analysis') {
                         <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-blue-700 to-blue-900 transition-all"
-                            style={{ width: `${Math.min(tool.usageRate, 100)}%` }}
+                            style={{ width: `${Math.min((tool.activeBorrows / tool.totalQuantity) * 100, 100)}%` }}
                           ></div>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-600 mt-1 font-bold">{tool.usageRate}%</p>
+                      <p className="text-xs text-slate-600 mt-1 font-bold">{Math.round((tool.activeBorrows / tool.totalQuantity) * 100)}%</p>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
@@ -3442,7 +3669,7 @@ if (currentScreen === 'admin-tools-analysis') {
 if (currentScreen === 'admin-users-analysis') {
   // ✅ Calculer les statistiques dynamiquement
   const userStats = calculateUserStats(allBorrows);
-  const userSegmentData = calculateUserSegmentation(allBorrows);
+  const userSegmentData = calculateUserSegmentation(allBorrows, users);
   const monthlyActivityData = calculateMonthlyTrend(allBorrows);
   
   const resetAdminFilters = () => {
@@ -3480,7 +3707,9 @@ if (currentScreen === 'admin-users-analysis') {
   return (
     <div className="min-h-screen bg-gray-50">
       <Logo />
-      <LanguageSelector />
+      <div className="fixed top-6 right-6 z-50">
+        <LanguageSelector />
+      </div>
       
       <AdminSidebar currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
       
@@ -3699,7 +3928,9 @@ if (currentScreen === 'admin-manage-users') {
   return (
     <div className="min-h-screen bg-gray-50">
       <Logo />
-      <LanguageSelector />
+      <div className="fixed top-6 right-6 z-50">
+        <LanguageSelector />
+      </div>
       
       <AdminSidebar currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
       
@@ -3720,7 +3951,7 @@ if (currentScreen === 'admin-manage-users') {
             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold flex items-center gap-2 shadow-lg"
           >
             <User className="w-5 h-5" />
-            {t('createPlaceholder')} {t('myAccount')}
+            {t('createPlaceholder')} {t('article_an')} {t('account')}
           </button>
         </div>
 
@@ -3781,6 +4012,7 @@ if (currentScreen === 'admin-manage-users') {
                             onClick={() => {
                               setSelectedUser(user);
                               setUserModalMode('edit');
+                              setShowCurrentPassword(false);
                               setUserModalOpen(true);
                             }}
                             className="px-3 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-800 transition-all text-sm font-semibold"
@@ -3810,12 +4042,12 @@ if (currentScreen === 'admin-manage-users') {
         {/* Modale Utilisateur */}
         {userModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-slate-900">
-                  {userModalMode === 'create' ? t('createPlaceholder') + ' ' + t('myAccount') :
+                  {userModalMode === 'create' ? t('createPlaceholder') + ' ' + t('article_an') + ' ' + t('account') :
                    userModalMode === 'edit' ? t('editUser') :
-                   t('deleteUser')}
+                   t('deleteConfirm')}
                 </h3>
                 <button
                   onClick={() => setUserModalOpen(false)}
@@ -3828,7 +4060,7 @@ if (currentScreen === 'admin-manage-users') {
               {userModalMode === 'delete' ? (
                 <div>
                   <p className="text-slate-700 mb-6">
-                    {t('deleteConfirm')} <strong>{selectedUser?.fullName}</strong> ?
+                    {t('deleteUser')} <strong>{selectedUser?.fullName}</strong> ?
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -3840,9 +4072,23 @@ if (currentScreen === 'admin-manage-users') {
                     <button
                       onClick={async () => {
                         try {
+                          // Vérifier s'il y a des emprunts actifs
+                          const activeBorrows = allBorrows.filter(
+                            b => b.userName === selectedUser?.fullName && 
+                                 (b.status === 'active' || b.status === 'overdue')
+                          );
+                          
+                          if (activeBorrows.length > 0) {
+                            // Afficher la grande alerte
+                            setUserActiveBorrowsCount(activeBorrows.length);
+                            setShowDeleteConfirmWithBorrows(true);
+                            return;
+                          }
+                          
+                          // Sinon, supprimer directement
                           const result = await usersAPI.delete(selectedUser!.id);
                           if (result.success) {
-                            alert(`✅ ${t('myAccount')} ${t('delete')}d`);
+                            alert(`✅ ${t('account')} ${t('delete')}d`);
                             await loadUsersFromBackend();
                             setUserModalOpen(false);
                           }
@@ -3884,6 +4130,7 @@ if (currentScreen === 'admin-manage-users') {
                         const email = formData.get('email') as string;
                         const badgeId = formData.get('badgeId') as string;
                         const role = formData.get('role') as string;
+                        const password = formData.get('password') as string;
                         
                         console.log('📝 Modification utilisateur:');
                         console.log('  Ancien fullName:', selectedUser?.fullName, '-> Nouveau:', fullName);
@@ -3895,6 +4142,7 @@ if (currentScreen === 'admin-manage-users') {
                         if (email !== undefined && email.trim() !== '' && email !== selectedUser?.email) userData.email = email;
                         if (badgeId !== undefined && badgeId.trim() !== '' && badgeId !== selectedUser?.badgeId) userData.badgeId = badgeId;
                         if (role !== undefined && role !== selectedUser?.role) userData.role = role;
+                        if (password !== undefined && password.trim() !== '') userData.password = password;
                         
                         console.log('📤 Données envoyées:', userData);
                         
@@ -3903,7 +4151,7 @@ if (currentScreen === 'admin-manage-users') {
                           const result = await usersAPI.update(selectedUser!.id, userData);
                           console.log('📥 Réponse du serveur:', result);
                           if (result.success) {
-                            alert(`✅ ${t('myAccount')} ${t('edit')}ed`);
+                            alert(`✅ ${t('account')} ${t('edit')}ed`);
                             await loadUsersFromBackend();
                             setUserModalOpen(false);
                           } else {
@@ -3972,7 +4220,7 @@ if (currentScreen === 'admin-manage-users') {
                   {userModalMode === 'create' && (
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">
-                        {t('password')} ({t('optional')})
+                        {t('New Password')}
                       </label>
                       <input
                         type="password"
@@ -3980,6 +4228,47 @@ if (currentScreen === 'admin-manage-users') {
                         className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                       />
                     </div>
+                  )}
+
+                  {userModalMode === 'edit' && (
+                    <>
+                      {selectedUser?.password && (
+                        <div className="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4 mb-4">
+                          <label className="block text-sm font-bold text-slate-700 mb-3">
+                            {t('currentPassword')}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type={showCurrentPassword ? 'text' : 'password'}
+                              value={selectedUser.password}
+                              readOnly
+                              className="flex-1 px-4 py-2 bg-white rounded-lg border border-slate-300 text-slate-600 font-mono text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all text-sm"
+                              title={t('currentPasswordHelp')}
+                            >
+                              {showCurrentPassword ? t('hide') : t('show')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                          {t('newPassword')}
+                        </label>
+                        <input
+                          type="password"
+                          name="password"
+                          placeholder={t('passwordOptional')}
+                          className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">{t('leaveEmptyToKeep')}</p>
+                      </div>
+                    </>
                   )}
 
                   <div className="flex gap-3 pt-4">
@@ -4002,6 +4291,70 @@ if (currentScreen === 'admin-manage-users') {
             </div>
           </div>
         )}
+
+        {/* Grande Modale de Confirmation - Suppression avec emprunts actifs */}
+        {showDeleteConfirmWithBorrows && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-10 max-w-xl w-full shadow-2xl">
+              <div className="flex items-center justify-center mb-6">
+                <AlertCircle className="w-16 h-16 text-red-500" />
+              </div>
+              
+              <h2 className="text-3xl font-bold text-center text-slate-900 mb-6">
+                ⚠️ {t('deleteConfirm')}
+              </h2>
+
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 mb-8">
+                <p className="text-lg text-slate-800 mb-4">
+                  {t('deleteUser')} <strong className="text-red-600 text-xl">{selectedUser?.fullName}</strong> ?
+                </p>
+                
+                <div className="bg-white border-l-4 border-red-500 p-4 rounded mb-4">
+                  <p className="font-semibold text-slate-900 text-lg">
+                    ⚡ {t('attention')} !
+                  </p>
+                  <p className="text-slate-700 mt-2">
+                    {t('activeBorrowsWarning')} <strong className="text-red-600 text-lg">{userActiveBorrowsCount} {t('activeBorrowsCount')}</strong>
+                  </p>
+                  <p className="text-slate-600 text-sm mt-2">
+                    {t('sureDeleteUser')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirmWithBorrows(false);
+                    setUserActiveBorrowsCount(0);
+                  }}
+                  className="flex-1 px-6 py-3 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold transition-all text-lg"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const result = await usersAPI.delete(selectedUser!.id);
+                      if (result.success) {
+                        alert(`✅ ${t('account')} ${t('delete')}d`);
+                        await loadUsersFromBackend();
+                        setUserModalOpen(false);
+                        setShowDeleteConfirmWithBorrows(false);
+                        setUserActiveBorrowsCount(0);
+                      }
+                    } catch (error: any) {
+                      alert(error.response?.data?.message || t('deletionError'));
+                    }
+                  }}
+                  className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all text-lg"
+                >
+                  {t('delete')} {t('definitely')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4011,10 +4364,21 @@ if (currentScreen === 'admin-manage-users') {
 // ÉCRAN - GESTION OUTILS
 // ============================================
 if (currentScreen === 'admin-manage-tools') {
+  // ✅ Calculer le nombre d'emprunts ACTIFS par outil (pas le champ denormalisé)
+  const toolBorrowCounts = tools.map(tool => {
+    const activeBorrowCount = allBorrows.filter(b => 
+      b.toolId === tool.id && 
+      (b.status === 'active' || b.status === 'overdue')
+    ).length;
+    return { toolId: tool.id, borrowCount: activeBorrowCount };
+  });
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <Logo />
-      <LanguageSelector />
+      <div className="fixed top-6 right-6 z-50">
+        <LanguageSelector />
+      </div>
       
       <AdminSidebar currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
       
@@ -4024,7 +4388,104 @@ if (currentScreen === 'admin-manage-tools') {
           <p className="text-gray-600">{t('toolsManagement')}</p>
         </div>
 
-        {/* Bouton Ajouter */}
+        {/* Section Gestion Catégories */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-slate-900">{t('categoryManagement')}</h2>
+            <button
+              onClick={() => {
+                setSelectedCategoryForEdit(null);
+                setCategoryModalMode('create');
+                setCategoryModalOpen(true);
+              }}
+              className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-semibold flex items-center gap-2 shadow-lg"
+            >
+              <Plus className="w-5 h-5" />
+              {t('newCategory')}
+            </button>
+          </div>
+
+          {/* Tableau des catégories */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200">
+            {categoriesLoading ? (
+              <div className="p-12 text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-4 border-navy mb-4"></div>
+                <p className="text-slate-600">{t('loading')}</p>
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="p-12 text-center">
+                <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-600">{t('noCategories')}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b-2 border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('name')}</th>
+                      <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('toolsCount')}</th>
+                      <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((category, idx) => (
+                      <tr key={category.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                        <td className="px-6 py-4 text-sm font-medium text-slate-900">{t(getCategoryTranslationKey(category.name))}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="px-3 py-1 bg-slate-100 rounded-lg text-sm font-semibold">
+                            {category._count?.tools || 0}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedCategoryForEdit(category);
+                                setCategoryModalMode('edit');
+                                setCategoryModalOpen(true);
+                              }}
+                              className="px-3 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-all text-sm font-semibold"
+                            >
+                              {t('edit')}
+                            </button>
+                            {category._count?.tools > 0 ? (
+                              <div className="relative group">
+                                <button
+                                  disabled
+                                  className="px-3 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed text-sm font-semibold flex items-center gap-2 opacity-60"
+                                  title={t('categoryWithTools')}
+                                >
+                                  {t('delete')}
+                                  <AlertCircle className="w-4 h-4" />
+                                </button>
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-red-600 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap z-10">
+                                  {t('categoryWithTools')}
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setSelectedCategoryForEdit(category);
+                                  setCategoryModalMode('delete');
+                                  setCategoryModalOpen(true);
+                                }}
+                                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all text-sm font-semibold"
+                              >
+                                {t('delete')}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bouton Ajouter Outil */}
         <div className="mb-6 flex justify-end">
           <button
             onClick={() => {
@@ -4035,7 +4496,7 @@ if (currentScreen === 'admin-manage-tools') {
             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold flex items-center gap-2 shadow-lg"
           >
             <Wrench className="w-5 h-5" />
-            {t('createPlaceholder')} {t('tool')}
+            {t('createPlaceholder')} {t('article_a')} {t('tool')}
           </button>
         </div>
 
@@ -4060,8 +4521,9 @@ if (currentScreen === 'admin-manage-tools') {
                     <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">{t('category')}</th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('total')}</th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('available')}</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('borrowed')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('borrowed')} (Active)</th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('drawer')}</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('size')}</th>
                     <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">{t('actions')}</th>
                   </tr>
                 </thead>
@@ -4095,12 +4557,17 @@ if (currentScreen === 'admin-manage-tools') {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-sm font-semibold">
-                          {tool.borrowedQuantity}
+                          {toolBorrowCounts.find(t => t.toolId === tool.id)?.borrowCount || 0}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold">
                           {tool.drawer}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold">
+                          {tool.size ? t(getSizeTranslationKey(tool.size)) : '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -4141,9 +4608,9 @@ if (currentScreen === 'admin-manage-tools') {
             <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-slate-900">
-                  {toolModalMode === 'create' ? t('createPlaceholder') + ' ' + t('tool') :
+                  {toolModalMode === 'create' ? t('createPlaceholder') + ' ' + t('article_a') + ' ' + t('tool') :
                    toolModalMode === 'edit' ? t('editTool') :
-                   t('deleteTool')}
+                   t('deleteConfirm')}
                 </h3>
                 <button
                   onClick={() => setToolModalOpen(false)}
@@ -4156,7 +4623,7 @@ if (currentScreen === 'admin-manage-tools') {
               {toolModalMode === 'delete' ? (
                 <div>
                   <p className="text-slate-700 mb-6">
-                    {t('deleteConfirm')} <strong>{t(selectedToolForEdit?.name || '')}</strong> ?
+                    {t('deleteTool')} <strong>{t(getToolTranslationKey(selectedToolForEdit?.name || ''))}</strong> ?
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -4273,14 +4740,22 @@ if (currentScreen === 'admin-manage-tools') {
                     <label className="block text-sm font-bold text-slate-700 mb-2">{t('category')}</label>
                     <select
                       name="category"
-                      defaultValue={selectedToolForEdit?.category || 'category.tournevis'}
+                      defaultValue={selectedToolForEdit?.category || (categories.length > 0 ? categories[0].name : 'category.tournevis')}
                       className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     >
-                      <option value="category.tournevis">{t('category.tournevis')}</option>
-                      <option value="category.cles">{t('category.cles')}</option>
-                      <option value="category.pinces">{t('category.pinces')}</option>
-                      <option value="category.marquage">{t('category.marquage')}</option>
-                      <option value="category.coupe">{t('category.coupe')}</option>
+                      {categories.length > 0 ? (
+                        categories.map((cat: any) => (
+                          <option key={cat.id} value={cat.name}>{cat.name}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="category.tournevis">{t('category.tournevis')}</option>
+                          <option value="category.cles">{t('category.cles')}</option>
+                          <option value="category.pinces">{t('category.pinces')}</option>
+                          <option value="category.marquage">{t('category.marquage')}</option>
+                          <option value="category.coupe">{t('category.coupe')}</option>
+                        </>
+                      )}
                     </select>
                   </div>
 
@@ -4402,11 +4877,132 @@ if (currentScreen === 'admin-manage-tools') {
             </div>
           </div>
         )}
+
+        {/* Modale Catégorie */}
+        {categoryModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-slate-900">
+                  {categoryModalMode === 'create' ? t('newCategory') :
+                   categoryModalMode === 'edit' ? t('editCategory') :
+                   t('deleteConfirm')}
+                </h3>
+                <button
+                  onClick={() => setCategoryModalOpen(false)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {categoryModalMode === 'delete' ? (
+                <div>
+                  <p className="text-slate-600 mb-6">
+                    {t('deleteCategory')} <strong>{selectedCategoryForEdit?.name}</strong> ?
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setCategoryModalOpen(false)}
+                      className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold transition-all"
+                    >
+                      {t('cancel')}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const result = await categoriesAPI.delete(selectedCategoryForEdit.id);
+                          if (result.success) {
+                            alert(`✅ ${t('categoryDeleted')}`);
+                            await loadCategoriesFromBackend();
+                            setCategoryModalOpen(false);
+                          } else {
+                            alert(`❌ ${result.message || t('categoryWithTools')}`);
+                          }
+                        } catch (error: any) {
+                          const errorMsg = error.response?.data?.message || error.message;
+                          alert(`❌ ${errorMsg}`);
+                        }
+                      }}
+                      className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all"
+                    >
+                      {t('delete')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const name = formData.get('categoryName') as string;
+
+                    if (!name.trim()) {
+                      alert('❌ ' + t('categoryName') + ' ' + t('required'));
+                      return;
+                    }
+
+                    try {
+                      if (categoryModalMode === 'create') {
+                        const result = await categoriesAPI.create({ name: name.trim() });
+                        if (result.success) {
+                          alert(`✅ ${t('categoryCreated')}`);
+                          await loadCategoriesFromBackend();
+                          setCategoryModalOpen(false);
+                        } else {
+                          alert(`❌ ${result.message || t('categoryAlreadyExists')}`);
+                        }
+                      } else if (categoryModalMode === 'edit') {
+                        const result = await categoriesAPI.update(selectedCategoryForEdit.id, { name: name.trim() });
+                        if (result.success) {
+                          alert(`✅ ${t('categoryModified')}`);
+                          await loadCategoriesFromBackend();
+                          setCategoryModalOpen(false);
+                        } else {
+                          alert(`❌ ${result.message || t('categoryAlreadyExists')}`);
+                        }
+                      }
+                    } catch (error: any) {
+                      const errorMsg = error.response?.data?.message || error.message;
+                      alert(`❌ ${errorMsg}`);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('categoryName')}</label>
+                    <input
+                      type="text"
+                      name="categoryName"
+                      defaultValue={selectedCategoryForEdit?.name || ''}
+                      placeholder={t('categoryNamePlaceholder')}
+                      required
+                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setCategoryModalOpen(false)}
+                      className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold transition-all"
+                    >
+                      {t('cancel')}
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all"
+                    >
+                      {categoryModalMode === 'create' ? t('create') : t('edit')}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-
-  return null;
 }

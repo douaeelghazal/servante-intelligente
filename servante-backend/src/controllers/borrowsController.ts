@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 
 const prisma = new PrismaClient();
+const HARDWARE_API = process.env.HARDWARE_API || 'http://localhost:3000/api/hardware';
 
 // Helper: Calculer la date limite (7 jours par défaut)
 const calculateDueDate = (borrowDate: Date, daysToAdd: number = 7): Date => {
@@ -110,6 +112,20 @@ export const createBorrow = async (req: Request, res: Response): Promise<void> =
         borrowedQuantity: { increment: 1 }
       }
     });
+
+    // 🔧 DÉCLENCHER LE MOTEUR SI LE TIROIR EST DÉFINI
+    if (tool.drawer) {
+      try {
+        console.log(`🤖 Ouverture du tiroir ${tool.drawer} pour l'outil: ${tool.name}`);
+        await axios.post(`${HARDWARE_API}/commands`, {
+          type: 'OPEN',
+          drawer: tool.drawer.toLowerCase()
+        });
+      } catch (motorError) {
+        console.error(`⚠️ Erreur lors de l'ouverture du tiroir: ${tool.drawer}`, motorError);
+        // Ne pas échouer l'emprunt si le moteur échoue
+      }
+    }
 
     res.status(201).json({
       success: true,

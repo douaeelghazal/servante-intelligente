@@ -21,6 +21,7 @@ declare global {
 const publicRoutes = [
   '/api/auth/badge-scan',
   '/api/auth/admin-login',
+  '/api/auth/user-login',
   '/api/borrows',              // ← AJOUTÉ
   '/api/tools',   
   '/api/users',              // ← AJOUTÉ

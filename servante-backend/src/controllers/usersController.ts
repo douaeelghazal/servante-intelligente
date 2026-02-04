@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -14,6 +13,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
         email: true,
         badgeId: true,
         role: true,
+        password: true,
         createdAt: true
       },
       orderBy: { fullName: 'asc' }
@@ -62,9 +62,6 @@ export const createUser = async (req: Request, res: Response) => {
       });
     }
 
-    // Hasher le mot de passe si fourni
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
-
     // Convertir le role en majuscules (student -> STUDENT, professor -> PROFESSOR, etc.)
     const roleMap: { [key: string]: string } = {
       'student': 'STUDENT',
@@ -81,14 +78,15 @@ export const createUser = async (req: Request, res: Response) => {
         email,
         badgeId,
         role: normalizedRole,
-        password: hashedPassword
+        password: password || null
       },
       select: {
         id: true,
         fullName: true,
         email: true,
         badgeId: true,
-        role: true
+        role: true,
+        password: true
       }
     });
 
@@ -110,11 +108,11 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    let { fullName, email, badgeId, role } = req.body;
+    let { fullName, email, badgeId, role, password } = req.body;
 
     console.log('🔧 UPDATE USER REQUEST:');
     console.log('  ID:', id);
-    console.log('  Body:', { fullName, email, badgeId, role });
+    console.log('  Body:', { fullName, email, badgeId, role, password: password ? '***' : undefined });
 
     // Vérifier si l'utilisateur existe
     const user = await prisma.user.findUnique({
@@ -166,6 +164,7 @@ export const updateUser = async (req: Request, res: Response) => {
     if (fullName !== undefined) updateData.fullName = fullName;
     if (email !== undefined) updateData.email = email;
     if (badgeId !== undefined) updateData.badgeId = badgeId;
+    if (password !== undefined) updateData.password = password || null;
     if (role !== undefined) {
       // Convertir le role en majuscules (student -> STUDENT, professor -> PROFESSOR, etc.)
       const roleMap: { [key: string]: string } = {
@@ -189,7 +188,8 @@ export const updateUser = async (req: Request, res: Response) => {
         fullName: true,
         email: true,
         badgeId: true,
-        role: true
+        role: true,
+        password: true
       }
     });
 
@@ -214,6 +214,32 @@ export const deleteUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    // ✅ VALIDATION STRICTE
+    if (!id || id.trim() === '') {
+      console.error('❌ ID utilisateur invalide:', id);
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur invalide'
+      });
+    }
+
+    console.log('🗑️ Suppression de l\'utilisateur:', id);
+
+    // Vérifier si l'utilisateur existe
+    const user = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      console.log('❌ Utilisateur non trouvé:', id);
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    console.log('✅ Utilisateur trouvé:', user.fullName);
+
     // Vérifier s'il a des emprunts actifs
     const activeBorrows = await prisma.borrow.findMany({
       where: {
@@ -222,17 +248,23 @@ export const deleteUser = async (req: Request, res: Response) => {
       }
     });
 
-    if (activeBorrows.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Impossible de supprimer: ${activeBorrows.length} emprunt(s) actif(s)`
-      });
-    }
+    console.log('📊 Emprunts actifs:', activeBorrows.length);
+
+    // ⚠️ NE PAS REJETER LA SUPPRESSION - Supprimer les emprunts aussi
+    // Supprimer TOUS les emprunts associés à cet utilisateur
+    console.log('🧹 Suppression des emprunts liés...');
+    const deletedBorrows = await prisma.borrow.deleteMany({
+      where: { userId: id }
+    });
+    console.log('✅ Emprunts supprimés:', deletedBorrows.count);
 
     // Supprimer l'utilisateur
+    console.log('🗑️ Suppression de l\'utilisateur...');
     await prisma.user.delete({
       where: { id }
     });
+
+    console.log('✅ Utilisateur supprimé avec succès:', id);
 
     res.json({
       success: true,
