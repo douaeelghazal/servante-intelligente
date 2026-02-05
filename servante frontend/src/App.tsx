@@ -86,7 +86,7 @@ import BadgeScanner from './components/BadgeScanner';
 // ============================================
 // IMPORTS - API Backend
 // ============================================
-import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI, categoriesAPI } from './services/api';
+import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI, categoriesAPI, hardwareAPI } from './services/api';
 import { useEffect } from 'react';
 
 // ============================================
@@ -164,6 +164,7 @@ type Screen =
   | 'badge-scan'
   | 'tool-selection'
   | 'confirm-borrow'
+  | 'drawer-open'
   | 'admin-login'
   | 'user-login'
   | 'admin-dashboard'
@@ -1236,6 +1237,18 @@ export default function App() {
     await loadBorrowsFromBackend();
   };
 
+  // ============================================
+  // FONCTION - Sélectionner un outil et ouvrir le tiroir
+  // ============================================
+  const handleToolSelection = async (tool: Tool) => {
+    if (tool.availableQuantity <= 0) return;
+
+    // Sélectionner l'outil et passer à l'écran de confirmation
+    setSelectedTool(tool);
+    setIsReturnMode(false);
+    setCurrentScreen('confirm-borrow');
+  };
+
 
   const loadToolsFromBackend = async () => {
     try {
@@ -1879,13 +1892,7 @@ export default function App() {
               {filteredTools.map(tool => (
                 <div
                   key={tool.id}
-                  onClick={() => {
-                    if (tool.availableQuantity > 0) {  // ← CORRIGÉ
-                      setSelectedTool(tool);
-                      setIsReturnMode(false);
-                      setCurrentScreen('confirm-borrow');
-                    }
-                  }}
+                  onClick={() => handleToolSelection(tool)}
                   className={`group p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition-all duration-300 border-2 ${tool.availableQuantity > 0  // ← CORRIGÉ
                     ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
                     : 'border-slate-200 opacity-50 cursor-not-allowed'
@@ -1955,13 +1962,7 @@ export default function App() {
               {filteredTools.map(tool => (
                 <div
                   key={tool.id}
-                  onClick={() => {
-                    if (tool.availableQuantity > 0) {
-                      setSelectedTool(tool);
-                      setIsReturnMode(false);
-                      setCurrentScreen('confirm-borrow');
-                    }
-                  }}
+                  onClick={() => handleToolSelection(tool)}
                   className={`flex items-center gap-6 p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition-all duration-300 border-2 ${tool.availableQuantity > 0
                     ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
                     : 'border-slate-200 opacity-50 cursor-not-allowed'
@@ -2020,7 +2021,9 @@ export default function App() {
     const goBackScreen = isReturnMode ? 'return-tool' : 'tool-selection';
     const titleText = isReturnMode ? t('returnConfirm') : t('borrowConfirm');
     const infoText = isReturnMode ? t('verifyReturnInfo') : t('verifyBorrowInfo');
-    const notificationText = isReturnMode ? t('drawerOpeningReturn') : t('drawerOpening');
+    const notificationText = isReturnMode
+      ? t('drawerOpeningReturn')
+      : 'The drawer will open automatically when the borrow is confirmed.';
 
     // ✅ FONCTION POUR GÉRER L'EMPRUNT OU LE RETOUR
     const handleConfirmAction = async () => {
@@ -2069,12 +2072,36 @@ export default function App() {
           const result = await borrowsAPI.borrow(currentUser.id, selectedTool.id, 1);
 
           if (result.success) {
-            alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
-            // Recharger les données
-            await loadBorrowsFromBackend();
-            await loadToolsFromBackend();
-            setSelectedTool(null);
-            setCurrentScreen('tool-selection');
+            // Ouvrir le tiroir si le numéro est défini
+            if (selectedTool.drawer && ['1', '2', '3', '4'].includes(selectedTool.drawer)) {
+              try {
+                console.log(`🔓 Ouverture du tiroir ${selectedTool.drawer} pour ${selectedTool.name}...`);
+                const drawerResult = await hardwareAPI.openDrawer(selectedTool.drawer as '1' | '2' | '3' | '4');
+                if (drawerResult.success) {
+                  // Afficher l'écran du tiroir ouvert
+                  setCurrentScreen('drawer-open');
+                } else {
+                  alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
+                  await loadBorrowsFromBackend();
+                  await loadToolsFromBackend();
+                  setSelectedTool(null);
+                  setCurrentScreen('tool-selection');
+                }
+              } catch (error) {
+                console.warn('⚠️ Moteurs non disponibles ou erreur:', error);
+                alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
+                await loadBorrowsFromBackend();
+                await loadToolsFromBackend();
+                setSelectedTool(null);
+                setCurrentScreen('tool-selection');
+              }
+            } else {
+              alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
+              await loadBorrowsFromBackend();
+              await loadToolsFromBackend();
+              setSelectedTool(null);
+              setCurrentScreen('tool-selection');
+            }
           } else {
             alert(`❌ ${t('borrowError')}`);
           }
@@ -2193,6 +2220,142 @@ export default function App() {
               <div className="mt-6 text-sm text-slate-700 bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start gap-3">
                 <span className="text-2xl">💡</span>
                 <div className="font-medium">{notificationText}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // ÉCRAN - TIROIR OUVERT (Récupération de l'outil)
+  // ============================================
+  if (currentScreen === 'drawer-open' && selectedTool) {
+    const handleCloseDrawer = async () => {
+      if (!selectedTool.drawer) return;
+
+      try {
+        setLoading(true);
+        const result = await hardwareAPI.closeDrawer(selectedTool.drawer as '1' | '2' | '3' | '4');
+
+        if (result.success) {
+          showToast(`Tiroir ${selectedTool.drawer} fermé`, 'success', 2000);
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur fermeture tiroir:', error);
+        showToast('Erreur lors de la fermeture', 'error', 2000);
+      } finally {
+        setLoading(false);
+        // Recharger les données et retourner à la sélection
+        await loadBorrowsFromBackend();
+        await loadToolsFromBackend();
+        setSelectedTool(null);
+        setCurrentScreen('tool-selection');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+        {/* Header fixe */}
+        <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+          <div className="flex items-center justify-between py-3 px-6 h-20">
+            <div className="flex items-center">
+              <LanguageSelector />
+            </div>
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <Logo />
+            </div>
+            <div className="w-32"></div>
+          </div>
+        </div>
+
+        {/* Contenu principal */}
+        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-6">
+          <div className="max-w-3xl w-full">
+            <div className="bg-white rounded-3xl shadow-2xl p-12 border-2 border-green-200">
+
+              {/* Animation et icône */}
+              <div className="flex justify-center mb-8">
+                <div className="relative">
+                  <div className="w-32 h-32 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center animate-pulse shadow-xl">
+                    <Box className="w-16 h-16 text-white" />
+                  </div>
+                  <div className="absolute -top-2 -right-2 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                    <span className="text-2xl">🔓</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Titre */}
+              <h2 className="text-4xl font-bold text-center text-slate-900 mb-4">
+                Drawer {selectedTool.drawer} is Open!
+              </h2>
+              <p className="text-xl text-center text-slate-600 mb-8">
+                Please retrieve your tool
+              </p>
+
+              {/* Info outil */}
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-6 mb-8 border-2 border-blue-200">
+                <div className="flex items-center gap-6">
+                  <div className="w-24 h-24 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-md">
+                    <img src={selectedTool.image} alt={selectedTool.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{getTranslatedToolName(selectedTool.name)}</h3>
+                    <p className="text-sm text-slate-600 font-medium">{t('category')}: {t(getCategoryTranslationKey(selectedTool.category))}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-8">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-1">Take your tool</h4>
+                    <p className="text-sm text-slate-600">Carefully remove the tool from drawer {selectedTool.drawer}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 mb-8">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-1">Close the drawer</h4>
+                    <p className="text-sm text-slate-600">Click the button below when you're done</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bouton fermer */}
+              <button
+                onClick={handleCloseDrawer}
+                disabled={loading}
+                className="w-full py-6 rounded-2xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-all font-bold text-xl shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    <span>Closing...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-6 h-6" />
+                    <span>Close Drawer & Finish</span>
+                  </>
+                )}
+              </button>
+
+              {/* Note de sécurité */}
+              <div className="mt-6 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>Please ensure the drawer is fully closed before leaving</span>
               </div>
             </div>
           </div>

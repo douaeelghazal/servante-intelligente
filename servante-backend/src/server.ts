@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import rfidRoutes from './routes/rfid.js';
 import { rfidService } from './services/rfidService.js';
+import { motorService } from './services/motorService.js';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -96,18 +97,28 @@ async function startServer() {
     await prisma.$connect();
     console.log('✅ Connexion à PostgreSQL réussie');
 
-    // Initialiser le service RFID
+    // Initialiser le service moteur (qui contient aussi le RFID maintenant)
     try {
-      const connected = await rfidService.initialize();
-      if (connected) {
-        const status = rfidService.getStatus();
-        console.log(`✅ Lecteur RFID connecté sur ${status.port}`);
+      await motorService.initialize();
+      const motorStatus = motorService.getStatus();
+      if (motorStatus.connected) {
+        console.log(`✅ Arduino complet connecté sur ${motorStatus.port} (RFID + Moteurs)`);
+
+        // Initialiser le service RFID sur le même port
+        try {
+          const connected = await rfidService.initialize();
+          if (connected) {
+            console.log(`✅ Lecteur RFID initialisé sur le même port`);
+          }
+        } catch (error) {
+          console.log('⚠️ Erreur initialisation RFID:', error);
+        }
       } else {
-        console.log('⚠️ Lecteur RFID non trouvé. Le serveur démarre sans RFID.');
+        console.log('⚠️ Arduino non trouvé. Le serveur démarre sans matériel.');
       }
     } catch (error) {
-      console.log('⚠️ Impossible d\'initialiser le lecteur RFID:', error);
-      console.log('   Le serveur démarre sans RFID. Branchez l\'Arduino et redémarrez.');
+      console.log('⚠️ Impossible d\'initialiser l\'Arduino:', error);
+      console.log('   Le serveur démarre sans matériel. Branchez l\'Arduino et redémarrez.');
     }
 
     // Démarrer le serveur
@@ -131,6 +142,10 @@ const gracefulShutdown = async () => {
     // Fermer le service RFID
     await rfidService.close();
     console.log('✅ Service RFID fermé');
+
+    // Fermer le service moteur
+    await motorService.close();
+    console.log('✅ Service moteur fermé');
 
     // Déconnecter la base de données
     await prisma.$disconnect();

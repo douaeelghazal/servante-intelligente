@@ -64,7 +64,7 @@ export const usersAPI = {
     const response = await api.get('/users');
     return response.data;
   },
-  
+
   create: async (userData: {
     fullName: string;
     email: string;
@@ -75,7 +75,7 @@ export const usersAPI = {
     const response = await api.post('/users', userData);
     return response.data;
   },
-  
+
   update: async (id: string, userData: {
     fullName?: string;
     email?: string;
@@ -86,7 +86,7 @@ export const usersAPI = {
     const response = await api.put(`/users/${id}`, userData);
     return response.data;
   },
-  
+
   delete: async (id: string) => {
     const response = await api.delete(`/users/${id}`);
     return response.data;
@@ -221,7 +221,7 @@ export const uploadAPI = {
   uploadImage: async (file: File) => {
     const formData = new FormData();
     formData.append('image', file);
-    
+
     const response = await axios.post(
       `${API_URL}/upload/upload`,
       formData,
@@ -231,6 +231,31 @@ export const uploadAPI = {
         },
       }
     );
+    return response.data;
+  }
+};
+
+// ============================================
+// MOTOR/HARDWARE API
+// ============================================
+export const hardwareAPI = {
+  openDrawer: async (drawerNumber: '1' | '2' | '3' | '4') => {
+    const response = await api.post('/hardware/drawer/open', { drawerNumber });
+    return response.data;
+  },
+
+  closeDrawer: async (drawerNumber: '1' | '2' | '3' | '4') => {
+    const response = await api.post('/hardware/drawer/close', { drawerNumber });
+    return response.data;
+  },
+
+  stopMotors: async () => {
+    const response = await api.post('/hardware/motor/stop');
+    return response.data;
+  },
+
+  getMotorStatus: async () => {
+    const response = await api.get('/hardware/motor/status');
     return response.data;
   }
 };

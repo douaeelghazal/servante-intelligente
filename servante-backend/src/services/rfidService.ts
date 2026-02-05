@@ -1,74 +1,37 @@
 import { SerialPort } from 'serialport';
 import { ReadlineParser } from '@serialport/parser-readline';
+import { motorService } from './motorService';
 
 class RFIDService {
-    private port: SerialPort | null = null;
-    private parser: ReadlineParser | null = null;
     private lastScannedBadge: { uid: string; timestamp: number } | null = null;
+    private usingSharedPort: boolean = false;
 
     async initialize() {
         try {
-            const portPath = await this.findArduinoPort();
+            // Check if motorService already has a port open
+            const motorPort = motorService.getPortPath();
 
-            if (!portPath) {
-                console.warn('⚠️  Arduino RFID reader not detected');
-                return false;
-            }
+            if (motorPort) {
+                // Use shared port with motorService
+                console.log('📡 Utilisation du port partagé avec motorService:', motorPort);
+                this.usingSharedPort = true;
 
-            this.port = new SerialPort({
-                path: portPath,
-                baudRate: 9600
-            });
-
-            this.parser = this.port.pipe(new ReadlineParser({ delimiter: '\n' }));
-
-            this.parser.on('data', (data: string) => {
-                const trimmed = data.trim();
-
-                // Format attendu: UID:0A1B2C3D
-                if (trimmed.startsWith('UID:')) {
-                    const uid = trimmed.replace('UID:', '').toUpperCase();
-
-                    // Toujours mettre à jour le timestamp même si c'est le même badge
-                    // Cela permet de rescanner le même badge plusieurs fois
+                // Register callback to receive RFID data from motorService
+                motorService.setRfidCallback((uid: string) => {
                     this.lastScannedBadge = {
                         uid,
                         timestamp: Date.now()
                     };
+                });
 
-                    console.log('📇 Badge RFID scanné:', uid);
-                }
-            });
-
-            this.port.on('error', (err) => {
-                console.error('❌ Erreur port série RFID:', err.message);
-            });
-
-            console.log('✅ Lecteur RFID connecté sur', portPath);
-            return true;
+                return true;
+            } else {
+                console.warn('⚠️ Arduino RFID reader not detected (motorService not connected)');
+                return false;
+            }
         } catch (error) {
             console.error('❌ Erreur initialisation RFID:', error);
             return false;
-        }
-    }
-
-    private async findArduinoPort(): Promise<string | null> {
-        try {
-            const ports = await SerialPort.list();
-
-            // Chercher un port Arduino (Mega utilise souvent CH340 ou FTDI)
-            const arduinoPort = ports.find(port =>
-                port.manufacturer?.toLowerCase().includes('arduino') ||
-                port.manufacturer?.toLowerCase().includes('ch340') ||
-                port.manufacturer?.toLowerCase().includes('ftdi') ||
-                port.vendorId === '2341' || // Arduino officiel
-                port.vendorId === '1a86'    // CH340 (clone Arduino)
-            );
-
-            return arduinoPort?.path || null;
-        } catch (error) {
-            console.error('Erreur lors de la recherche du port Arduino:', error);
-            return null;
         }
     }
 
@@ -97,16 +60,25 @@ class RFIDService {
     }
 
     getStatus(): { connected: boolean; port?: string } {
+        if (this.usingSharedPort) {
+            const motorPort = motorService.getPortPath();
+            return {
+                connected: motorPort !== null,
+                port: motorPort || undefined
+            };
+        }
         return {
-            connected: this.port !== null && this.port.isOpen,
-            port: this.port?.path
+            connected: false,
+            port: undefined
         };
     }
 
     close() {
-        if (this.port?.isOpen) {
-            this.port.close();
-            console.log('🔌 Lecteur RFID déconnecté');
+        // Don't close the port, it's shared with motorService
+        // Just clear the callback
+        if (this.usingSharedPort) {
+            motorService.setRfidCallback(() => { });
+            console.log('🔌 Callback RFID désactivé (port partagé)');
         }
     }
 }

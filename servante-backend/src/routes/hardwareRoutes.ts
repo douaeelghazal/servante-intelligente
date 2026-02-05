@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { rfidService } from '../services/rfidService.js';
+import { motorService } from '../services/motorService.js';
+import {
+  openDrawer,
+  closeDrawer,
+  stopMotors,
+  getMotorStatus
+} from '../controllers/motorController.js';
 
 const prisma = new PrismaClient();
 
@@ -420,6 +427,12 @@ router.post('/rfid', receiveRFIDHandler);
 router.post('/badge-scan/start', startBadgeScan);
 router.get('/badge-scan/:scanId', checkBadgeScan);
 router.delete('/badge-scan/:scanId', cancelBadgeScan);
+
+// Routes pour les moteurs
+router.post('/drawer/open', openDrawer);
+router.post('/drawer/close', closeDrawer);
+router.post('/motor/stop', stopMotors);
+router.get('/motor/status', getMotorStatus);
 
 export default router;
 
