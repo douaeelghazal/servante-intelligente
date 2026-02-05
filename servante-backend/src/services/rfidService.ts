@@ -28,12 +28,15 @@ class RFIDService {
                 // Format attendu: UID:0A1B2C3D
                 if (trimmed.startsWith('UID:')) {
                     const uid = trimmed.replace('UID:', '').toUpperCase();
-                    console.log('📇 Badge RFID scanné:', uid);
 
+                    // Toujours mettre à jour le timestamp même si c'est le même badge
+                    // Cela permet de rescanner le même badge plusieurs fois
                     this.lastScannedBadge = {
                         uid,
                         timestamp: Date.now()
                     };
+
+                    console.log('📇 Badge RFID scanné:', uid);
                 }
             });
 

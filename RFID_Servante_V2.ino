@@ -15,6 +15,8 @@ MFRC522 rfid(SS_PIN, RST_PIN);
 // Tableau pour mémoriser le dernier UID lu
 byte lastUID[4];
 bool uidChanged = true;
+unsigned long lastSendTime = 0;
+const unsigned long SEND_INTERVAL = 3000; // Renvoyer toutes les 3 secondes
 
 void setup() {
   Serial.begin(9600);
@@ -58,7 +60,11 @@ void readRFID() {
     }
   }
 
-  if (uidChanged) {
+  // Vérifier si assez de temps s'est écoulé depuis le dernier envoi
+  unsigned long currentTime = millis();
+  bool shouldSend = uidChanged || (currentTime - lastSendTime >= SEND_INTERVAL);
+
+  if (shouldSend) {
     // Sauvegarder le nouvel UID
     for (byte i = 0; i < 4; i++) {
       lastUID[i] = rfid.uid.uidByte[i];
@@ -68,6 +74,9 @@ void readRFID() {
     Serial.print("UID:");
     printHex(rfid.uid.uidByte, rfid.uid.size);
     Serial.println();
+    
+    // Mettre à jour le temps du dernier envoi
+    lastSendTime = currentTime;
   }
 
   // Arrêter la communication avec la carte

@@ -332,7 +332,7 @@ export const checkBadgeScan = (req: Request, res: Response): void => {
 
     // Si pas encore de UID, vérifier le service RFID
     if (!scan.uid) {
-      const lastScan = rfidService.consumeLastScan();
+      const lastScan = rfidService.getLastScan();
       if (lastScan) {
         scan.uid = lastScan.uid;
         console.log(`✅ UID capturé depuis rfidService pour scan admin ${scanId}: ${scan.uid}`);
@@ -342,6 +342,8 @@ export const checkBadgeScan = (req: Request, res: Response): void => {
     if (scan.uid) {
       console.log(`✅ UID retourné pour scan admin ${scanId}: ${scan.uid}`);
       pendingScans.delete(scanId);
+      // Consommer le scan du service RFID pour permettre un nouveau scan
+      rfidService.consumeLastScan();
       res.json({ success: true, uid: scan.uid, message: 'Badge détecté avec succès' });
     } else {
       res.json({ success: true, uid: null, message: 'En attente du badge...' });

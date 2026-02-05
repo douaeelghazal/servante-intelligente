@@ -1064,6 +1064,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [allBorrows, setAllBorrows] = useState<BorrowRecord[]>([]);
   const [borrowsLoading, setBorrowsLoading] = useState(false);
+  const [showBadgeScanner, setShowBadgeScanner] = useState(false);
   // États pour la gestion des utilisateurs
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1463,11 +1464,10 @@ export default function App() {
   // ============================================
   // ÉCRAN 1 - Scan de badge
   // ============================================
-  const handleBadgeScan = async () => {
+  const handleBadgeScanned = async (badgeId: string) => {
     try {
       setLoading(true);
-
-      const badgeId = 'TEST123';
+      setShowBadgeScanner(false);
 
       const result = await authAPI.badgeScan(badgeId);
 
@@ -1477,10 +1477,12 @@ export default function App() {
         setCurrentScreen('tool-selection');
       } else {
         alert(t('invalidBadge'));
+        setShowBadgeScanner(false);
       }
     } catch (error) {
       console.error('❌ Erreur login:', error);
       alert(t('connectionError'));
+      setShowBadgeScanner(false);
     } finally {
       setLoading(false);
     }
@@ -1544,7 +1546,7 @@ export default function App() {
           <div className="mb-16">
             <div
               className="mx-auto w-72 h-72 rounded-2xl card-glass flex items-center justify-center shadow-soft cursor-pointer hover:scale-105 transition-transform"
-              onClick={handleBadgeScan}
+              onClick={() => setShowBadgeScanner(true)}
             >
               <div className="w-60 h-60 rounded-lg bg-gradient-to-br from-cyansoft to-white flex items-center justify-center">
                 <Wifi className="w-16 h-16 text-navy" />
@@ -1570,6 +1572,14 @@ export default function App() {
             {t('userLogin')}
           </button>
         </main>
+
+        {/* Scanner de badge */}
+        {showBadgeScanner && (
+          <BadgeScanner
+            onBadgeScanned={handleBadgeScanned}
+            onClose={() => setShowBadgeScanner(false)}
+          />
+        )}
       </div>
     );
   }
