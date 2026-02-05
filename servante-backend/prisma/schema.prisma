@@ -73,3 +73,15 @@ enum BorrowStatus {
   RETURNED
   OVERDUE
 }
+
+model RFIDAttempt {
+  id          String   @id @default(uuid())
+  uid         String
+  ipAddress   String
+  success     Boolean
+  userId      String?
+  timestamp   DateTime @default(now())
+  
+  @@index([uid, timestamp])
+  @@index([ipAddress, timestamp])
+}
