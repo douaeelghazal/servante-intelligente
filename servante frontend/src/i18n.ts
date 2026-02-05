@@ -14,7 +14,7 @@ const fr = {
   processing: 'Traitement...',
   loading: 'Chargement...',
   loadingTools: 'Chargement des outils...',
-  
+
   // Search & Filters
   searchPlaceholder: "Rechercher un outil par nom, catégorie ou taille...",
   categoryAll: "Toutes catégories",
@@ -38,7 +38,7 @@ const fr = {
   toolsOf: "outils sur",
   resetFilters: "Réinitialiser",
   activeFilters: "filtres actifs",
-  
+
   // Main App
   servanteTitle: "Servante Intelligente",
   returnTool: "Retourner un outil",
@@ -55,7 +55,7 @@ const fr = {
   drawerOpening: "Le tiroir s'ouvrira automatiquement lorsque l'emprunt sera confirmé.",
   drawerOpeningReturn: "Le tiroir s'ouvrira automatiquement pour que vous puissiez replacer l'outil.",
   catalogTitle: "Catalogue d'outils",
-  
+
   // Form Fields
   category: "Catégorie",
   drawer: "Tiroir",
@@ -72,12 +72,12 @@ const fr = {
   tool: "Outil",
   status: "Statut",
   actions: "Actions",
-  
+
   // Roles
   student: 'Étudiant',
   professor: 'Professeur',
   technician: 'Technicien',
-  
+
   // Admin Login
   adminLogin: "Accès Administrateur",
   adminPassword: "Entrez le mot de passe administrateur",
@@ -87,13 +87,13 @@ const fr = {
   login: "Se connecter",
   demoPassword: "Demo password",
   incorrectPassword: '❌ Mot de passe incorrect',
-  
+
   // User Login
   userLogin: "Connexion Utilisateur",
   loginWithEmail: "Connectez-vous avec votre email et mot de passe",
   emailPasswordRequired: "Email et mot de passe requis",
   invalidCredentials: "Email ou mot de passe incorrect",
-  
+
   // Admin Navigation
   overview: "Vue d'ensemble",
   toolsAnalysis: "Analyse Outils",
@@ -102,7 +102,7 @@ const fr = {
   backHome: "Retour accueil",
   manageUsers: "Gestion Utilisateurs",
   manageTools: "Gestion Outils",
-  
+
   // Admin Overview
   dashboardOverview: "Tableau de bord général de la servante intelligente",
   totalTools: "Outils totaux",
@@ -128,7 +128,7 @@ const fr = {
   criticalStock: "Stock critique",
   currentlyBorrowed: "outil(s) actuellement emprunté(s)",
   toolsCurrentlyBorrowed: "Outils Actuellement Empruntés",
-  
+
   // Tools Analysis
   detailedAnalysis: "Analyse détaillée de l'utilisation et de la disponibilité",
   usageRate: "Taux d'utilisation",
@@ -144,7 +144,7 @@ const fr = {
   avgDuration: 'Durée moy',
   utilization: 'Utilisation',
   popularity: 'Popularité',
-  
+
   // Users Analysis
   userStats: "Statistiques et comportements des utilisateurs",
   totalUsers: "Utilisateurs totaux",
@@ -152,7 +152,7 @@ const fr = {
   onTimeReturnRate: "Taux de retour à temps",
   userSegmentation: "Segmentation des utilisateurs",
   monthlyActivity: "Activité mensuelle",
-  
+
   // Inventory
   stockManagement: "Gestion du stock et de la disponibilité",
   totalStock: "Stock total",
@@ -162,7 +162,7 @@ const fr = {
   stockByCategory: "Stock par catégorie",
   stockAlerts: "Alertes de stock",
   maintenanceRequired: "Maintenance requise",
-  
+
   // User Account Page
   myAccount: "Mon Compte",
   account: "Compte",
@@ -183,13 +183,13 @@ const fr = {
   overdue: "En retard",
   active: "Actif",
   types: "types",
-  
+
   // User Account Statistics
   lateCount: 'Retards',
   lateReturns: 'Retards',
   onTimeRate: 'Taux à temps',
   warnings: 'Avertissements',
-  
+
   // Alerts on User Account
   toolsOverdue: 'outil(s) en retard',
   toolsDueSoon: 'outil(s) à retourner bientôt',
@@ -207,7 +207,7 @@ const fr = {
   alertReminderSoon: 'Envoyer un rappel',
   onTime: 'À temps',
   delay: 'Retard',
-  
+
   // User Management
   usersManagementTitle: 'Gestion des Utilisateurs',
   usersManagementDesc: 'Créer, modifier et supprimer des utilisateurs',
@@ -226,7 +226,7 @@ const fr = {
   newPassword: 'Nouveau mot de passe',
   show: 'Afficher',
   hide: 'Masquer',
-  
+
   // Tool Management
   toolsManagementTitle: 'Gestion des Outils',
   toolsManagementDesc: 'Créer, modifier et supprimer des outils',
@@ -241,11 +241,10 @@ const fr = {
   imageUrlOptional: 'URL Image (optionnel)',
   imageUrlPlaceholder: '/images/default-tool.jpg',
   toolsManagement: 'Outils',
-  
+
   // Category Management
   categoryManagement: 'Gestion des Catégories',
   newCategory: 'Nouvelle Catégorie',
-  categoryAll: 'Toutes les catégories',
   noCategories: 'Aucune catégorie',
   categoryName: 'Nom de la catégorie',
   categoryNamePlaceholder: 'Nom de la catégorie',
@@ -257,7 +256,7 @@ const fr = {
   deleteCategory: 'Supprimer Catégorie',
   categoryAlreadyExists: 'Une catégorie avec ce nom existe déjà',
   toolsCount: 'Nombre d\'outils',
-  
+
   // Filters (Admin)
   advancedFilters: 'Filtres avancés',
   resetFiltersBtn: 'Réinitialiser',
@@ -273,7 +272,7 @@ const fr = {
   thisWeek: 'Cette semaine',
   thisYear: 'Cette année',
   year2024: 'Année 2024',
-  
+
   // Drawers
   drawer1: 'Tiroir 1',
   drawer2: 'Tiroir 2',
@@ -283,13 +282,13 @@ const fr = {
   drawer2Cles: 'Tiroir 2 - Clés',
   drawer3Pinces: 'Tiroir 3 - Pinces',
   drawer4Marquage: 'Tiroir 4 - Marquage & Coupe',
-  
+
   // Borrow History Table
   borrowHistoryTitle: 'Historique des emprunts',
   send: 'Envoyer',
   noBorrowsMatchFilters: 'Aucun emprunt ne correspond aux filtres',
   export: "Exporter",
-  
+
   // Messages & Errors
   areYouSure: 'Êtes-vous sûr de vouloir supprimer',
   deletionError: 'Erreur lors de la suppression',
@@ -310,12 +309,8 @@ const fr = {
   operationError: 'Erreur lors de l\'opération',
   success: 'Succès',
   deleteConfirm: 'Êtes-vous sûr?',
-  deleteUser: 'Êtes-vous sûr de vouloir supprimer',
-  deleteTool: 'Êtes-vous sûr de vouloir supprimer',
-  deleteCategory: 'Êtes-vous sûr de vouloir supprimer',
   attention: 'Attention',
   activeBorrowsWarning: 'Cet utilisateur a',
-  activeBorrowsCount: 'emprunt(s) actif(s)',
   sureDeleteUser: 'Êtes-vous VRAIMENT sûr de vouloir supprimer cet utilisateur ?',
   close: 'Fermer',
   save: 'Enregistrer',
@@ -323,37 +318,23 @@ const fr = {
   toolName: 'Nom de l\'outil',
   userName: 'Nom d\'utilisateur',
   toolImage: 'Image de l\'outil',
-  imageUrl: 'URL de l\'image',
-  quantity: 'Quantité',
-  totalQuantity: 'Quantité totale',
   availableQuantity: 'Quantité disponible',
   borrowedQuantity: 'Quantité empruntée',
-  drawer: 'Tiroir',
-  role: 'Rôle',
-  email: 'Email',
   badgeId: 'ID Badge',
-  fullName: 'Nom complet',
-  size: 'Taille',
   noData: 'Aucune donnée',
-  noUsers: 'Aucun utilisateur',
-  noTools: 'Aucun outil',
   noBorrows: 'Aucun emprunt',
   pleaseSelect: 'Veuillez sélectionner',
   selectOption: 'Sélectionner une option',
   addNew: 'Ajouter nouveau',
-  newUser: 'Nouvel utilisateur',
-  newTool: 'Nouvel outil',
   editUser: 'Modifier utilisateur',
   editTool: 'Modifier outil',
-  deleteUser: 'Supprimer utilisateur',
-  deleteTool: 'Supprimer outil',
   confirmDelete: 'Confirmer la suppression',
   error: 'Erreur',
   warning: 'Avertissement',
   info: 'Information',
   success_upper: 'Succès',
   noBorrowData: 'Aucune donnée d\'emprunt disponible',
-  
+
   // Additional Hardcoded Text Translations
   advancedFiltersTitle: 'Filtres avancés',
   resetBtn: 'Réinitialiser',
@@ -375,7 +356,6 @@ const fr = {
   avgDays: 'Durée moy',
   usage: 'Utilisation',
   popularityScore: 'Popularité',
-  toolsCount: 'outils',
   noBorrowsMatch: 'Aucun emprunt ne correspond aux filtres',
   allPeriods: 'Toute la période',
   separator: '──────────',
@@ -414,7 +394,7 @@ const fr = {
   createPlaceholder: 'Créer',
   article_un: 'un',
   article_une: 'une',
-  
+
   // Email translations
   toolReminder: 'Rappel de retour: {toolName}',
   toolOverdueAlert: 'ALERTE RETARD: {toolName}',
@@ -430,59 +410,51 @@ const fr = {
   emailToolTeam: 'L\'équipe de la servante intelligente',
   bulkEmailConfirm: 'Voulez-vous envoyer un rappel à {count} utilisateur(s)?',
   allStatus: 'Tous les statuts',
-  
-    // User Settings & Notifications
-    notifications: 'Notifications',
-    noNotifications: 'Aucune notification',
-    emailNotifications: 'Notifications par email',
-    receiveEmailAlerts: 'Recevoir des alertes par email pour les dates d\'échéance',
-    pushNotifications: 'Notifications push',
-    receivePushAlerts: 'Recevoir des notifications push',
-    appearance: 'Apparence',
-    darkMode: 'Mode sombre',
-    darkModeDesc: 'Activer le thème sombre',
-    language: 'Langue',
-    settings: 'Paramètres',
-    myAccount: 'Mon Compte',
-    borrowHistory: 'Historique',
-    logout: 'Déconnexion',
-    manageAccount: 'Gérer mon compte',
-    returnReminder: 'Veuillez retourner vos outils empruntés bientôt',
-    itemReturned: 'Votre outil a été retourné avec succès',
-    newTools: 'Nouveaux outils',
-    checkNewItems: 'Découvrez les nouveaux outils ajoutés à l\'inventaire',
-    dueDate: 'Date d\'échéance',
-    returnSuccess: 'Retour confirmé',
-    adminSettings: 'Paramètres Admin',
-    emailConfiguration: 'Configuration Email',
-    emailConfigDesc: 'Configurez les paramètres SMTP pour l\'envoi de notifications par email',
-    smtpServer: 'Serveur SMTP',
-    smtpPort: 'Port SMTP',
-    senderEmail: 'Email expéditeur',
-    emailTestTip: 'Testez la fonctionnalité email en envoyant des rappels depuis la page d\'analyse des utilisateurs',
-    borrowingRules: 'Règles d\'emprunt',
-    borrowingRulesDesc: 'Paramètres de période d\'emprunt par défaut et de rappels',
-    defaultDueDays: 'Jours par défaut',
-    daysToReturn: 'Jours avant retour requis',
-    reminderBeforeDue: 'Rappel avant échéance',
-    daysBeforeReminder: 'Jours avant échéance pour envoyer un rappel',
-    systemSettings: 'Paramètres système',
-    systemSettingsDesc: 'Gérer les paramètres système et la maintenance',
-    autoBackup: 'Sauvegarde automatique',
-    autoBackupDesc: 'Sauvegarde quotidienne de la base de données à minuit',
-    maintenanceMode: 'Mode maintenance',
-    maintenanceModeDesc: 'Désactiver l\'accès utilisateur pour la maintenance système',
-    security: 'Sécurité',
-    changeAdminPassword: 'Changer le mot de passe admin',
-    viewSecurityLogs: 'Voir les journaux de sécurité',
-    changePasswordPrompt: 'Fonction de changement de mot de passe admin',
-    viewLogsPrompt: 'Fonction d\'affichage des journaux système',
-    settingsSaved: 'Paramètres sauvegardés avec succès',
-    save: 'Enregistrer',
-    emailReminderSent: 'Rappel par email envoyé',
-    emailOverdueSent: 'Notification de retard envoyée',
-    emailsSent: 'emails envoyés',
-  
+
+  // User Settings & Notifications
+  noNotifications: 'Aucune notification',
+  emailNotifications: 'Notifications par email',
+  receiveEmailAlerts: 'Recevoir des alertes par email pour les dates d\'échéance',
+  pushNotifications: 'Notifications push',
+  receivePushAlerts: 'Recevoir des notifications push',
+  appearance: 'Apparence',
+  darkMode: 'Mode sombre',
+  darkModeDesc: 'Activer le thème sombre',
+  language: 'Langue',
+  manageAccount: 'Gérer mon compte',
+  returnReminder: 'Veuillez retourner vos outils empruntés bientôt',
+  itemReturned: 'Votre outil a été retourné avec succès',
+  newTools: 'Nouveaux outils',
+  checkNewItems: 'Découvrez les nouveaux outils ajoutés à l\'inventaire',
+  adminSettings: 'Paramètres Admin',
+  emailConfiguration: 'Configuration Email',
+  emailConfigDesc: 'Configurez les paramètres SMTP pour l\'envoi de notifications par email',
+  smtpServer: 'Serveur SMTP',
+  smtpPort: 'Port SMTP',
+  senderEmail: 'Email expéditeur',
+  emailTestTip: 'Testez la fonctionnalité email en envoyant des rappels depuis la page d\'analyse des utilisateurs',
+  borrowingRules: 'Règles d\'emprunt',
+  borrowingRulesDesc: 'Paramètres de période d\'emprunt par défaut et de rappels',
+  defaultDueDays: 'Jours par défaut',
+  daysToReturn: 'Jours avant retour requis',
+  reminderBeforeDue: 'Rappel avant échéance',
+  daysBeforeReminder: 'Jours avant échéance pour envoyer un rappel',
+  systemSettings: 'Paramètres système',
+  systemSettingsDesc: 'Gérer les paramètres système et la maintenance',
+  autoBackup: 'Sauvegarde automatique',
+  autoBackupDesc: 'Sauvegarde quotidienne de la base de données à minuit',
+  maintenanceMode: 'Mode maintenance',
+  maintenanceModeDesc: 'Désactiver l\'accès utilisateur pour la maintenance système',
+  security: 'Sécurité',
+  changeAdminPassword: 'Changer le mot de passe admin',
+  viewSecurityLogs: 'Voir les journaux de sécurité',
+  changePasswordPrompt: 'Fonction de changement de mot de passe admin',
+  viewLogsPrompt: 'Fonction d\'affichage des journaux système',
+  settingsSaved: 'Paramètres sauvegardés avec succès',
+  emailReminderSent: 'Rappel par email envoyé',
+  emailOverdueSent: 'Notification de retard envoyée',
+  emailsSent: 'emails envoyés',
+
   // Tools Names
   'tool.tournevisPlatGrand': 'Tournevis plat grand',
   'tool.tournevisPlatMoyen': 'Tournevis plat moyen',
@@ -505,14 +477,14 @@ const fr = {
   'tool.miniPinceBecDemiRondCoude': 'Mini pince à bec demi-rond coudé',
   'tool.miniPinceBecDemiRond': 'Mini pince à bec demi-rond',
   'tool.miniPinceBecPlat': 'Mini pince à bec plat',
-  
+
   // Categories
   'category.tournevis': 'Tournevis',
   'category.cles': 'Clés',
   'category.pinces': 'Pinces',
   'category.marquage': 'Outils de marquage',
   'category.coupe': 'Outils de coupe',
-  
+
   // Sizes
   sizeGrand: 'Grand',
   sizeMoyen: 'Moyen',
@@ -533,7 +505,7 @@ const en = {
   processing: 'Processing...',
   loading: 'Loading...',
   loadingTools: 'Loading tools...',
-  
+
   // Search & Filters
   searchPlaceholder: "Search tool by name, category or size...",
   categoryAll: "All categories",
@@ -557,7 +529,7 @@ const en = {
   toolsOf: "tools of",
   resetFilters: "Reset",
   activeFilters: "active filters",
-  
+
   // Main App
   servanteTitle: "Smart Tool Cabinet",
   returnTool: "Return a tool",
@@ -574,7 +546,7 @@ const en = {
   drawerOpening: "The drawer will open automatically when the borrow is confirmed.",
   drawerOpeningReturn: "The drawer will open automatically so you can put the tool back.",
   catalogTitle: "Tool Catalog",
-  
+
   // Form Fields
   category: "Category",
   drawer: "Drawer",
@@ -591,12 +563,12 @@ const en = {
   tool: "Tool",
   status: "Status",
   actions: "Actions",
-  
+
   // Roles
   student: 'Student',
   professor: 'Professor',
   technician: 'Technician',
-  
+
   // Admin Login
   adminLogin: "Administrator Access",
   adminPassword: "Enter administrator password",
@@ -606,14 +578,13 @@ const en = {
   login: "Login",
   demoPassword: "Demo password",
   incorrectPassword: '❌ Incorrect password',
-  
+
   // User Login
   userLogin: "User Login",
   loginWithEmail: "Login with your email and password",
   emailPasswordRequired: "Email and password are required",
   invalidCredentials: "Invalid email or password",
-  incorrectPassword: '❌ Incorrect password',
-  
+
   // Admin Navigation
   overview: "Overview",
   toolsAnalysis: "Tools Analysis",
@@ -622,7 +593,7 @@ const en = {
   backHome: "Back home",
   manageUsers: "Manage Users",
   manageTools: "Manage Tools",
-  
+
   // Admin Overview
   dashboardOverview: "Smart cabinet general dashboard",
   totalTools: "Total Tools",
@@ -648,7 +619,7 @@ const en = {
   criticalStock: "Critical stock",
   currentlyBorrowed: "tool(s) currently borrowed",
   toolsCurrentlyBorrowed: "Tools Currently Borrowed",
-  
+
   // Tools Analysis
   detailedAnalysis: "Detailed analysis of usage and availability",
   usageRate: "Usage Rate",
@@ -664,7 +635,7 @@ const en = {
   avgDuration: 'Avg duration',
   utilization: 'Utilization',
   popularity: 'Popularity',
-  
+
   // Users Analysis
   userStats: "User statistics and behaviors",
   totalUsers: "Total Users",
@@ -672,7 +643,7 @@ const en = {
   onTimeReturnRate: "On-time Return Rate",
   userSegmentation: "User Segmentation",
   monthlyActivity: "Monthly Activity",
-  
+
   // Inventory
   stockManagement: "Stock and availability management",
   totalStock: "Total Stock",
@@ -682,7 +653,7 @@ const en = {
   stockByCategory: "Stock by Category",
   stockAlerts: "Stock Alerts",
   maintenanceRequired: "Maintenance required",
-  
+
   // User Account Page
   myAccount: "My Account",
   account: "Account",
@@ -703,13 +674,13 @@ const en = {
   overdue: "Overdue",
   active: "Active",
   types: "types",
-  
+
   // User Account Statistics
   lateCount: 'Late Returns',
   lateReturns: 'Late Returns',
   onTimeRate: 'On-Time Rate',
   warnings: 'Warnings',
-  
+
   // Alerts on User Account
   toolsOverdue: 'tool(s) overdue',
   toolsDueSoon: 'tool(s) due soon',
@@ -727,7 +698,7 @@ const en = {
   alertReminderSoon: 'Send reminder',
   onTime: 'On time',
   delay: 'Delay',
-  
+
   // User Management
   usersManagementTitle: 'User Management',
   usersManagementDesc: 'Create, edit and delete users',
@@ -746,9 +717,7 @@ const en = {
   newPassword: 'New password',
   show: 'Show',
   hide: 'Hide',
-  userModified: 'User modified',
-  usersManagement: 'Users',
-  
+
   // Tool Management
   toolsManagementTitle: 'Tool Management',
   toolsManagementDesc: 'Create, edit and delete tools',
@@ -763,11 +732,10 @@ const en = {
   imageUrlOptional: 'Image URL (optional)',
   imageUrlPlaceholder: '/images/default-tool.jpg',
   toolsManagement: 'Tools',
-  
+
   // Category Management
   categoryManagement: 'Category Management',
   newCategory: 'New Category',
-  categoryAll: 'All categories',
   noCategories: 'No categories',
   categoryName: 'Category name',
   categoryNamePlaceholder: 'Category name',
@@ -779,7 +747,7 @@ const en = {
   deleteCategory: 'Delete Category',
   categoryAlreadyExists: 'A category with this name already exists',
   toolsCount: 'Number of tools',
-  
+
   // Filters (Admin)
   advancedFilters: 'Advanced Filters',
   resetFiltersBtn: 'Reset',
@@ -795,7 +763,7 @@ const en = {
   thisWeek: 'This week',
   thisYear: 'This year',
   year2024: 'Year 2024',
-  
+
   // Drawers
   drawer1: 'Drawer 1',
   drawer2: 'Drawer 2',
@@ -805,13 +773,13 @@ const en = {
   drawer2Cles: 'Drawer 2 - Wrenches',
   drawer3Pinces: 'Drawer 3 - Pliers',
   drawer4Marquage: 'Drawer 4 - Marking & Cutting',
-  
+
   // Borrow History Table
   borrowHistoryTitle: 'Borrow History',
   send: 'Send',
   noBorrowsMatchFilters: 'No borrows match the filters',
   export: "Export",
-  
+
   // Messages & Errors
   areYouSure: 'Are you sure you want to delete',
   deletionError: 'Error deleting',
@@ -832,12 +800,8 @@ const en = {
   noChanges: 'ℹ️ No changes',
   success: 'Success',
   deleteConfirm: 'Are you sure?',
-  deleteUser: 'Are you sure you want to delete',
-  deleteTool: 'Are you sure you want to delete',
-  deleteCategory: 'Are you sure you want to delete',
   attention: 'Warning',
   activeBorrowsWarning: 'This user has',
-  activeBorrowsCount: 'active borrow(s)',
   sureDeleteUser: 'Are you REALLY sure you want to delete this user?',
   close: 'Close',
   save: 'Save',
@@ -845,35 +809,23 @@ const en = {
   toolName: 'Tool name',
   userName: 'Username',
   toolImage: 'Tool image',
-  quantity: 'Quantity',
-  totalQuantity: 'Total quantity',
   availableQuantity: 'Available quantity',
   borrowedQuantity: 'Borrowed quantity',
-  drawer: 'Drawer',
-  role: 'Role',
-  email: 'Email',
   badgeId: 'Badge ID',
-  fullName: 'Full name',
   noData: 'No data',
-  noUsers: 'No users',
-  noTools: 'No tools',
   noBorrows: 'No borrows',
   pleaseSelect: 'Please select',
   selectOption: 'Select an option',
   addNew: 'Add new',
-  newUser: 'New user',
-  newTool: 'New tool',
   editUser: 'Edit user',
   editTool: 'Edit tool',
-  deleteUser: 'Delete user',
-  deleteTool: 'Delete tool',
   confirmDelete: 'Confirm deletion',
   error: 'Error',
   warning: 'Warning',
   info: 'Information',
   success_upper: 'Success',
   optional: 'optional',
-  
+
   // Additional Hardcoded Text Translations
   advancedFiltersTitle: 'Advanced filters',
   resetBtn: 'Reset',
@@ -895,7 +847,6 @@ const en = {
   avgDays: 'Avg duration',
   usage: 'Usage',
   popularityScore: 'Popularity',
-  toolsCount: 'tools',
   noBorrowsMatch: 'No borrows match the filters',
   allPeriods: 'All periods',
   separator: '──────────',
@@ -934,7 +885,7 @@ const en = {
   createPlaceholder: 'Create',
   article_a: 'a',
   article_an: 'an',
-  
+
   // Email translations
   toolReminder: 'Return reminder: {toolName}',
   toolOverdueAlert: 'OVERDUE ALERT: {toolName}',
@@ -950,59 +901,51 @@ const en = {
   emailToolTeam: 'The smart tool cabinet team',
   bulkEmailConfirm: 'Do you want to send a reminder to {count} user(s)?',
   allStatus: 'All statuses',
-  
-    // User Settings & Notifications
-    notifications: 'Notifications',
-    noNotifications: 'No notifications yet',
-    emailNotifications: 'Email Notifications',
-    receiveEmailAlerts: 'Receive email alerts for due dates',
-    pushNotifications: 'Push Notifications',
-    receivePushAlerts: 'Receive push notifications',
-    appearance: 'Appearance',
-    darkMode: 'Dark Mode',
-    darkModeDesc: 'Switch to dark theme',
-    language: 'Language',
-    settings: 'Settings',
-    myAccount: 'My Account',
-    borrowHistory: 'History',
-    logout: 'Logout',
-    manageAccount: 'Manage My Account',
-    returnReminder: 'Please return your borrowed tools soon',
-    itemReturned: 'Your tool has been successfully returned',
-    newTools: 'New Tools',
-    checkNewItems: 'Check out the new tools added to inventory',
-    dueDate: 'Due Date Approaching',
-    returnSuccess: 'Return Confirmed',
-    adminSettings: 'Admin Settings',
-    emailConfiguration: 'Email Configuration',
-    emailConfigDesc: 'Configure SMTP settings for sending email notifications',
-    smtpServer: 'SMTP Server',
-    smtpPort: 'SMTP Port',
-    senderEmail: 'Sender Email',
-    emailTestTip: 'Test email functionality by sending reminders from the Users Analysis page',
-    borrowingRules: 'Borrowing Rules',
-    borrowingRulesDesc: 'Configure default borrowing periods and reminder settings',
-    defaultDueDays: 'Default Due Days',
-    daysToReturn: 'Days until tool must be returned',
-    reminderBeforeDue: 'Reminder Before Due',
-    daysBeforeReminder: 'Days before due date to send reminder',
-    systemSettings: 'System Settings',
-    systemSettingsDesc: 'Manage system-wide settings and maintenance',
-    autoBackup: 'Automatic Backup',
-    autoBackupDesc: 'Daily database backup at midnight',
-    maintenanceMode: 'Maintenance Mode',
-    maintenanceModeDesc: 'Disable user access for system maintenance',
-    security: 'Security',
-    changeAdminPassword: 'Change Admin Password',
-    viewSecurityLogs: 'View Security Logs',
-    changePasswordPrompt: 'Change admin password functionality',
-    viewLogsPrompt: 'View system logs functionality',
-    settingsSaved: 'Settings saved successfully',
-    save: 'Save',
-    emailReminderSent: 'Email reminder sent',
-    emailOverdueSent: 'Overdue notification sent',
-    emailsSent: 'emails sent',
-  
+
+  // User Settings & Notifications
+  noNotifications: 'No notifications yet',
+  emailNotifications: 'Email Notifications',
+  receiveEmailAlerts: 'Receive email alerts for due dates',
+  pushNotifications: 'Push Notifications',
+  receivePushAlerts: 'Receive push notifications',
+  appearance: 'Appearance',
+  darkMode: 'Dark Mode',
+  darkModeDesc: 'Switch to dark theme',
+  language: 'Language',
+  manageAccount: 'Manage My Account',
+  returnReminder: 'Please return your borrowed tools soon',
+  itemReturned: 'Your tool has been successfully returned',
+  newTools: 'New Tools',
+  checkNewItems: 'Check out the new tools added to inventory',
+  adminSettings: 'Admin Settings',
+  emailConfiguration: 'Email Configuration',
+  emailConfigDesc: 'Configure SMTP settings for sending email notifications',
+  smtpServer: 'SMTP Server',
+  smtpPort: 'SMTP Port',
+  senderEmail: 'Sender Email',
+  emailTestTip: 'Test email functionality by sending reminders from the Users Analysis page',
+  borrowingRules: 'Borrowing Rules',
+  borrowingRulesDesc: 'Configure default borrowing periods and reminder settings',
+  defaultDueDays: 'Default Due Days',
+  daysToReturn: 'Days until tool must be returned',
+  reminderBeforeDue: 'Reminder Before Due',
+  daysBeforeReminder: 'Days before due date to send reminder',
+  systemSettings: 'System Settings',
+  systemSettingsDesc: 'Manage system-wide settings and maintenance',
+  autoBackup: 'Automatic Backup',
+  autoBackupDesc: 'Daily database backup at midnight',
+  maintenanceMode: 'Maintenance Mode',
+  maintenanceModeDesc: 'Disable user access for system maintenance',
+  security: 'Security',
+  changeAdminPassword: 'Change Admin Password',
+  viewSecurityLogs: 'View Security Logs',
+  changePasswordPrompt: 'Change admin password functionality',
+  viewLogsPrompt: 'View system logs functionality',
+  settingsSaved: 'Settings saved successfully',
+  emailReminderSent: 'Email reminder sent',
+  emailOverdueSent: 'Overdue notification sent',
+  emailsSent: 'emails sent',
+
   // Tools Names
   'tool.tournevisPlatGrand': 'Large flat screwdriver',
   'tool.tournevisPlatMoyen': 'Medium flat screwdriver',
@@ -1025,14 +968,14 @@ const en = {
   'tool.miniPinceBecDemiRondCoude': 'Mini bent needle-nose pliers',
   'tool.miniPinceBecDemiRond': 'Mini needle-nose pliers',
   'tool.miniPinceBecPlat': 'Mini flat-nose pliers',
-  
+
   // Categories
   'category.tournevis': 'Screwdrivers',
   'category.cles': 'Wrenches',
   'category.pinces': 'Pliers',
   'category.marquage': 'Marking tools',
   'category.coupe': 'Cutting tools',
-  
+
   // Sizes
   sizeGrand: 'Large',
   sizeMoyen: 'Medium',

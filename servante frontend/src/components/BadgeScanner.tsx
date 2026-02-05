@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Scan, X, CheckCircle, Loader } from 'lucide-react';
 
 interface BadgeScannerProps {
@@ -12,13 +12,15 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
     const [status, setStatus] = useState<'init' | 'waiting' | 'success' | 'error'>('init');
     const [message, setMessage] = useState('Initialisation...');
     const [scannedUid, setScannedUid] = useState<string | null>(null);
+    const isPollingRef = useRef(false);
 
     // Démarrer le scan au montage du composant
     useEffect(() => {
         startScan();
 
         return () => {
-            // Annuler le scan si le composant est démonté
+            // Arrêter le polling et annuler le scan
+            isPollingRef.current = false;
             if (scanId) {
                 cancelScan(scanId);
             }
@@ -57,11 +59,18 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
     const pollForResult = async (id: string) => {
         const maxAttempts = 60; // 60 secondes max
         let attempts = 0;
+        isPollingRef.current = true;
 
         const poll = async () => {
+            // Arrêter si le polling a été annulé
+            if (!isPollingRef.current) {
+                return;
+            }
+
             if (attempts >= maxAttempts) {
                 setStatus('error');
                 setMessage('Délai d\'attente dépassé. Réessayez.');
+                isPollingRef.current = false;
                 return;
             }
 
@@ -74,6 +83,7 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                     setScannedUid(data.uid);
                     setStatus('success');
                     setMessage(`Badge détecté : ${data.uid}`);
+                    isPollingRef.current = false;
 
                     // Notifier le parent après 1 seconde
                     setTimeout(() => {
@@ -82,15 +92,19 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                 } else if (data.success && !data.uid) {
                     // Toujours en attente
                     attempts++;
-                    setTimeout(poll, 1000);
+                    if (isPollingRef.current) {
+                        setTimeout(poll, 1000);
+                    }
                 } else {
                     setStatus('error');
                     setMessage(data.message || 'Erreur lors du scan');
+                    isPollingRef.current = false;
                 }
             } catch (error) {
                 console.error('Erreur poll:', error);
                 setStatus('error');
                 setMessage('Erreur de connexion');
+                isPollingRef.current = false;
             }
         };
 
@@ -118,6 +132,7 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                     </h3>
                     <button
                         onClick={() => {
+                            isPollingRef.current = false;
                             if (scanId) cancelScan(scanId);
                             onClose();
                         }}

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { rfidService } from '../services/rfidService.js';
 
 const prisma = new PrismaClient();
 
@@ -281,6 +282,16 @@ const pendingScans: Map<string, { uid: string; timestamp: Date }> = new Map();
  */
 export const startBadgeScan = (req: Request, res: Response): void => {
   try {
+    // Vérifier si le service RFID est initialisé
+    const status = rfidService.getStatus();
+    if (!status.connected) {
+      res.status(503).json({
+        success: false,
+        message: 'Lecteur RFID non connecté. Vérifiez que l\'Arduino est branché.'
+      });
+      return;
+    }
+
     const scanId = `scan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     pendingScans.set(scanId, { uid: '', timestamp: new Date() });
 
@@ -319,8 +330,17 @@ export const checkBadgeScan = (req: Request, res: Response): void => {
       return;
     }
 
+    // Si pas encore de UID, vérifier le service RFID
+    if (!scan.uid) {
+      const lastScan = rfidService.consumeLastScan();
+      if (lastScan) {
+        scan.uid = lastScan.uid;
+        console.log(`✅ UID capturé depuis rfidService pour scan admin ${scanId}: ${scan.uid}`);
+      }
+    }
+
     if (scan.uid) {
-      console.log(`✅ UID capturé pour scan admin ${scanId}: ${scan.uid}`);
+      console.log(`✅ UID retourné pour scan admin ${scanId}: ${scan.uid}`);
       pendingScans.delete(scanId);
       res.json({ success: true, uid: scan.uid, message: 'Badge détecté avec succès' });
     } else {
