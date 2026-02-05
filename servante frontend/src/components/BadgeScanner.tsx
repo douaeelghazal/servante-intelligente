@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Scan, X, CheckCircle, Loader } from 'lucide-react';
 
 interface BadgeScannerProps {
-    onBadgeScanned: (uid: string) => void;
+    onBadgeScanned: (uid: string) => Promise<{ success: boolean; userName?: string }>;
     onClose: () => void;
     currentBadgeId?: string;
 }
@@ -12,6 +12,7 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
     const [status, setStatus] = useState<'init' | 'waiting' | 'success' | 'error'>('init');
     const [message, setMessage] = useState('Initialisation...');
     const [scannedUid, setScannedUid] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
     const isPollingRef = useRef(false);
 
     // Démarrer le scan au montage du composant
@@ -82,13 +83,19 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                     // Badge détecté !
                     setScannedUid(data.uid);
                     setStatus('success');
-                    setMessage(`Badge détecté : ${data.uid}`);
+                    setMessage(`Badge détecté avec succès`);
                     isPollingRef.current = false;
 
-                    // Notifier le parent après 1 seconde
-                    setTimeout(() => {
-                        onBadgeScanned(data.uid);
-                    }, 1000);
+                    // Authentifier et récupérer le nom de l'utilisateur
+                    try {
+                        const authResult = await onBadgeScanned(data.uid);
+                        if (authResult.success && authResult.userName) {
+                            setUserName(authResult.userName);
+                            setMessage(`Bienvenue ${authResult.userName}!`);
+                        }
+                    } catch (error) {
+                        console.error('Erreur authentification:', error);
+                    }
                 } else if (data.success && !data.uid) {
                     // Toujours en attente
                     attempts++;
@@ -175,9 +182,9 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                     {/* Message */}
                     <div className="text-center">
                         <p className="text-lg font-semibold text-slate-900 mb-2">{message}</p>
-                        {scannedUid && (
-                            <p className="text-sm text-slate-600">
-                                UID: <span className="font-mono font-bold text-blue-600">{scannedUid}</span>
+                        {userName && status === 'success' && (
+                            <p className="text-xl text-green-600 font-bold mt-3">
+                                ✓ {userName}
                             </p>
                         )}
                         {currentBadgeId && status === 'waiting' && (

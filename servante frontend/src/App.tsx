@@ -1464,27 +1464,31 @@ export default function App() {
   // ============================================
   // ÉCRAN 1 - Scan de badge
   // ============================================
-  const handleBadgeScanned = async (badgeId: string) => {
+  const handleBadgeScanned = async (badgeId: string): Promise<{ success: boolean; userName?: string }> => {
     try {
-      setLoading(true);
-      setShowBadgeScanner(false);
-
       const result = await authAPI.badgeScan(badgeId);
 
       if (result.success) {
         console.log('✅ Login réussi:', result.data.user);
         setCurrentUser(result.data.user);
-        setCurrentScreen('tool-selection');
+
+        // Attendre 1.5 secondes pour montrer le message de bienvenue
+        setTimeout(() => {
+          setShowBadgeScanner(false);
+          setCurrentScreen('tool-selection');
+        }, 1500);
+
+        return { success: true, userName: result.data.user.fullName };
       } else {
         alert(t('invalidBadge'));
         setShowBadgeScanner(false);
+        return { success: false };
       }
     } catch (error) {
       console.error('❌ Erreur login:', error);
       alert(t('connectionError'));
       setShowBadgeScanner(false);
-    } finally {
-      setLoading(false);
+      return { success: false };
     }
   };
 
