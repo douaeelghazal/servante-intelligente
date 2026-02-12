@@ -1480,6 +1480,7 @@ export default function App() {
   // ============================================
   const handleBadgeScanned = async (badgeId: string): Promise<{ success: boolean; userName?: string }> => {
     try {
+      console.log('🔍 Attempting login with Badge ID:', badgeId);
       const result = await authAPI.badgeScan(badgeId);
 
       if (result.success) {
@@ -1494,13 +1495,16 @@ export default function App() {
 
         return { success: true, userName: result.data.user.fullName };
       } else {
-        alert(t('invalidBadge'));
+        console.error('❌ Badge invalide:', badgeId);
+        alert(`${t('invalidBadge')}\n\nBadge ID: ${badgeId}\n\nPlease register this badge in the admin panel.`);
         setShowBadgeScanner(false);
         return { success: false };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur login:', error);
-      alert(t('connectionError'));
+      console.error('Badge ID that failed:', badgeId);
+      const errorMsg = error.response?.data?.message || t('connectionError');
+      alert(`${errorMsg}\n\nBadge ID: ${badgeId}`);
       setShowBadgeScanner(false);
       return { success: false };
     }

@@ -38,8 +38,7 @@ import {
   Bell,
   CreditCard,
   SortAsc,
-  Plus,
-  Scan
+  Plus
 } from "lucide-react";
 import {
   BarChart,
@@ -81,12 +80,11 @@ import { ToastContainer, Toast } from './components/Toast';
 import UserNotifications from './components/UserNotifications';
 import UserSettings from './components/UserSettings';
 import AdminSettings from './components/AdminSettings';
-import BadgeScanner from './components/BadgeScanner';
 
 // ============================================
 // IMPORTS - API Backend
 // ============================================
-import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI, categoriesAPI, hardwareAPI } from './services/api';
+import { authAPI, toolsAPI, borrowsAPI, usersAPI, uploadAPI, categoriesAPI } from './services/api';
 import { useEffect } from 'react';
 
 // ============================================
@@ -164,7 +162,6 @@ type Screen =
   | 'badge-scan'
   | 'tool-selection'
   | 'confirm-borrow'
-  | 'drawer-open'
   | 'admin-login'
   | 'user-login'
   | 'admin-dashboard'
@@ -660,8 +657,8 @@ const AdminSidebar: React.FC<{
               key={item.id}
               onClick={() => setCurrentScreen(item.id as Screen)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${currentScreen === item.id
-                ? 'bg-navy text-white shadow-md'
-                : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-navy text-white shadow-md'
+                  : 'text-gray-700 hover:bg-gray-100'
                 }`}
             >
               {item.icon}
@@ -905,8 +902,8 @@ const AdminBorrowsTable: React.FC<{
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${isOverdue ? 'bg-gradient-to-br from-red-600 to-red-800' :
-                        isDueSoon ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
-                          'bg-gradient-to-br from-blue-600 to-blue-800'
+                          isDueSoon ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
+                            'bg-gradient-to-br from-blue-600 to-blue-800'
                         }`}>
                         {borrow.userName.charAt(0)}
                       </div>
@@ -952,8 +949,8 @@ const AdminBorrowsTable: React.FC<{
                       <button
                         onClick={() => onSendEmail(borrow)}
                         className={`px-3 py-1.5 rounded-lg text-white font-semibold text-xs transition-all ${isOverdue
-                          ? 'bg-red-600 hover:bg-red-700'
-                          : 'bg-amber-600 hover:bg-amber-700'
+                            ? 'bg-red-600 hover:bg-red-700'
+                            : 'bg-amber-600 hover:bg-amber-700'
                           }`}
                       >
                         {t('send')}
@@ -1065,7 +1062,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [allBorrows, setAllBorrows] = useState<BorrowRecord[]>([]);
   const [borrowsLoading, setBorrowsLoading] = useState(false);
-  const [showBadgeScanner, setShowBadgeScanner] = useState(false);
   // États pour la gestion des utilisateurs
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1075,8 +1071,6 @@ export default function App() {
   const [showDeleteConfirmWithBorrows, setShowDeleteConfirmWithBorrows] = useState(false);
   const [userActiveBorrowsCount, setUserActiveBorrowsCount] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [badgeScannerOpen, setBadgeScannerOpen] = useState(false);
-  const [scannedBadgeId, setScannedBadgeId] = useState<string>('');
 
   // États pour la gestion des outils
   const [selectedToolForEdit, setSelectedToolForEdit] = useState<Tool | null>(null);
@@ -1118,15 +1112,6 @@ export default function App() {
     loadUsersFromBackend();
     loadCurrentUser();
   }, []);
-
-  // Initialiser le badge ID quand on ouvre/ferme le modal utilisateur
-  useEffect(() => {
-    if (userModalOpen) {
-      setScannedBadgeId(selectedUser?.badgeId || '');
-    } else {
-      setScannedBadgeId('');
-    }
-  }, [userModalOpen, selectedUser]);
 
   const loadBorrowsFromBackend = async () => {
     try {
@@ -1235,18 +1220,6 @@ export default function App() {
   // ============================================
   const reloadBorrows = async () => {
     await loadBorrowsFromBackend();
-  };
-
-  // ============================================
-  // FONCTION - Sélectionner un outil et ouvrir le tiroir
-  // ============================================
-  const handleToolSelection = async (tool: Tool) => {
-    if (tool.availableQuantity <= 0) return;
-
-    // Sélectionner l'outil et passer à l'écran de confirmation
-    setSelectedTool(tool);
-    setIsReturnMode(false);
-    setCurrentScreen('confirm-borrow');
   };
 
 
@@ -1477,33 +1450,7 @@ export default function App() {
   // ============================================
   // ÉCRAN 1 - Scan de badge
   // ============================================
-  const handleBadgeScanned = async (badgeId: string): Promise<{ success: boolean; userName?: string }> => {
-    try {
-      const result = await authAPI.badgeScan(badgeId);
-
-      if (result.success) {
-        console.log('✅ Login réussi:', result.data.user);
-        setCurrentUser(result.data.user);
-
-        // Attendre 1.5 secondes pour montrer le message de bienvenue
-        setTimeout(() => {
-          setShowBadgeScanner(false);
-          setCurrentScreen('tool-selection');
-        }, 1500);
-
-        return { success: true, userName: result.data.user.fullName };
-      } else {
-        alert(t('invalidBadge'));
-        setShowBadgeScanner(false);
-        return { success: false };
-      }
-    } catch (error) {
-      console.error('❌ Erreur login:', error);
-      alert(t('connectionError'));
-      setShowBadgeScanner(false);
-      return { success: false };
-    }
-  };
+  // Old test function removed - now using BadgeScanner modal component
 
   // ============================================
   // ÉCRAN - Connexion utilisateur (Email + Mot de passe)
@@ -1589,14 +1536,6 @@ export default function App() {
             {t('userLogin')}
           </button>
         </main>
-
-        {/* Scanner de badge */}
-        {showBadgeScanner && (
-          <BadgeScanner
-            onBadgeScanned={handleBadgeScanned}
-            onClose={() => setShowBadgeScanner(false)}
-          />
-        )}
       </div>
     );
   }
@@ -1738,8 +1677,8 @@ export default function App() {
                       <button
                         onClick={() => setAvailabilityFilter('all')}
                         className={`w-full px-5 py-3.5 rounded-xl font-semibold transition-all text-left flex items-center justify-between shadow-sm ${availabilityFilter === 'all'
-                          ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         <span>{t('all')}</span>
@@ -1751,8 +1690,8 @@ export default function App() {
                       <button
                         onClick={() => setAvailabilityFilter('available')}
                         className={`w-full px-5 py-3.5 rounded-xl font-semibold transition-all text-left flex items-center justify-between shadow-sm ${availabilityFilter === 'available'
-                          ? 'bg-emerald-500 text-white shadow-md scale-[1.02]'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-emerald-500 text-white shadow-md scale-[1.02]'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         <span className="flex items-center gap-2">
@@ -1767,8 +1706,8 @@ export default function App() {
                       <button
                         onClick={() => setAvailabilityFilter('borrowed')}
                         className={`w-full px-5 py-3.5 rounded-xl font-semibold transition-all text-left flex items-center justify-between shadow-sm ${availabilityFilter === 'borrowed'
-                          ? 'bg-red-500 text-white shadow-md scale-[1.02]'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-red-500 text-white shadow-md scale-[1.02]'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         <span>{t('borrowedOnly')}</span>
@@ -1788,8 +1727,8 @@ export default function App() {
                       <button
                         onClick={() => setSelectedCategory(ALL_CATEGORIES)}
                         className={`w-full px-4 py-3 rounded-xl font-medium transition-all text-left shadow-sm ${selectedCategory === ALL_CATEGORIES
-                          ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         {t('categoryAll')}
@@ -1800,8 +1739,8 @@ export default function App() {
                           key={cat}
                           onClick={() => setSelectedCategory(cat)}
                           className={`w-full px-4 py-3 rounded-xl font-medium transition-all text-left shadow-sm ${selectedCategory === cat
-                            ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                              ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                         >
                           {t(getCategoryTranslationKey(cat))}
@@ -1822,8 +1761,8 @@ export default function App() {
                             key={size.key}
                             onClick={() => toggleSize(size.key)}
                             className={`px-4 py-3 rounded-xl font-semibold text-sm transition-all shadow-sm ${selectedSizes.includes(size.key)
-                              ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                               }`}
                           >
                             {t(size.label)}
@@ -1858,8 +1797,8 @@ export default function App() {
                         <button
                           onClick={() => setViewMode('grid')}
                           className={`flex-1 p-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${viewMode === 'grid'
-                            ? 'bg-slate-900 text-white shadow-md'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                              ? 'bg-slate-900 text-white shadow-md'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                         >
                           <Grid className="w-5 h-5" />
@@ -1867,8 +1806,8 @@ export default function App() {
                         <button
                           onClick={() => setViewMode('list')}
                           className={`flex-1 p-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${viewMode === 'list'
-                            ? 'bg-slate-900 text-white shadow-md'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                              ? 'bg-slate-900 text-white shadow-md'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                         >
                           <List className="w-5 h-5" />
@@ -1892,17 +1831,23 @@ export default function App() {
               {filteredTools.map(tool => (
                 <div
                   key={tool.id}
-                  onClick={() => handleToolSelection(tool)}
+                  onClick={() => {
+                    if (tool.availableQuantity > 0) {  // ← CORRIGÉ
+                      setSelectedTool(tool);
+                      setIsReturnMode(false);
+                      setCurrentScreen('confirm-borrow');
+                    }
+                  }}
                   className={`group p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition-all duration-300 border-2 ${tool.availableQuantity > 0  // ← CORRIGÉ
-                    ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
-                    : 'border-slate-200 opacity-50 cursor-not-allowed'
+                      ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
+                      : 'border-slate-200 opacity-50 cursor-not-allowed'
                     }`}
                 >
                   <div className="flex justify-between mb-2">
                     <div className="flex flex-col gap-1">
                       <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${tool.availableQuantity > 0
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-red-500 text-white'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-red-500 text-white'
                         }`}>
                         {tool.availableQuantity > 0 ? `${tool.availableQuantity} ${t('available')}` : t('unavailable')}
                       </span>
@@ -1962,10 +1907,16 @@ export default function App() {
               {filteredTools.map(tool => (
                 <div
                   key={tool.id}
-                  onClick={() => handleToolSelection(tool)}
+                  onClick={() => {
+                    if (tool.availableQuantity > 0) {
+                      setSelectedTool(tool);
+                      setIsReturnMode(false);
+                      setCurrentScreen('confirm-borrow');
+                    }
+                  }}
                   className={`flex items-center gap-6 p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition-all duration-300 border-2 ${tool.availableQuantity > 0
-                    ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
-                    : 'border-slate-200 opacity-50 cursor-not-allowed'
+                      ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
+                      : 'border-slate-200 opacity-50 cursor-not-allowed'
                     }`}
                 >
                   <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
@@ -1992,8 +1943,8 @@ export default function App() {
 
                   <div className="flex items-center gap-4 flex-shrink-0">
                     <span className={`px-5 py-2.5 rounded-full text-sm font-bold shadow-sm ${tool.availableQuantity > 0
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-red-500 text-white'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-red-500 text-white'
                       }`}>
                       {tool.availableQuantity > 0 ? `${tool.availableQuantity} ${t('available')}` : t('unavailable')}
                     </span>
@@ -2021,9 +1972,7 @@ export default function App() {
     const goBackScreen = isReturnMode ? 'return-tool' : 'tool-selection';
     const titleText = isReturnMode ? t('returnConfirm') : t('borrowConfirm');
     const infoText = isReturnMode ? t('verifyReturnInfo') : t('verifyBorrowInfo');
-    const notificationText = isReturnMode
-      ? t('drawerOpeningReturn')
-      : 'The drawer will open automatically when the borrow is confirmed.';
+    const notificationText = isReturnMode ? t('drawerOpeningReturn') : t('drawerOpening');
 
     // ✅ FONCTION POUR GÉRER L'EMPRUNT OU LE RETOUR
     const handleConfirmAction = async () => {
@@ -2072,36 +2021,12 @@ export default function App() {
           const result = await borrowsAPI.borrow(currentUser.id, selectedTool.id, 1);
 
           if (result.success) {
-            // Ouvrir le tiroir si le numéro est défini
-            if (selectedTool.drawer && ['1', '2', '3', '4'].includes(selectedTool.drawer)) {
-              try {
-                console.log(`🔓 Ouverture du tiroir ${selectedTool.drawer} pour ${selectedTool.name}...`);
-                const drawerResult = await hardwareAPI.openDrawer(selectedTool.drawer as '1' | '2' | '3' | '4');
-                if (drawerResult.success) {
-                  // Afficher l'écran du tiroir ouvert
-                  setCurrentScreen('drawer-open');
-                } else {
-                  alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
-                  await loadBorrowsFromBackend();
-                  await loadToolsFromBackend();
-                  setSelectedTool(null);
-                  setCurrentScreen('tool-selection');
-                }
-              } catch (error) {
-                console.warn('⚠️ Moteurs non disponibles ou erreur:', error);
-                alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
-                await loadBorrowsFromBackend();
-                await loadToolsFromBackend();
-                setSelectedTool(null);
-                setCurrentScreen('tool-selection');
-              }
-            } else {
-              alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
-              await loadBorrowsFromBackend();
-              await loadToolsFromBackend();
-              setSelectedTool(null);
-              setCurrentScreen('tool-selection');
-            }
+            alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('borrowSuccess')}!`);
+            // Recharger les données
+            await loadBorrowsFromBackend();
+            await loadToolsFromBackend();
+            setSelectedTool(null);
+            setCurrentScreen('tool-selection');
           } else {
             alert(`❌ ${t('borrowError')}`);
           }
@@ -2220,142 +2145,6 @@ export default function App() {
               <div className="mt-6 text-sm text-slate-700 bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start gap-3">
                 <span className="text-2xl">💡</span>
                 <div className="font-medium">{notificationText}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================
-  // ÉCRAN - TIROIR OUVERT (Récupération de l'outil)
-  // ============================================
-  if (currentScreen === 'drawer-open' && selectedTool) {
-    const handleCloseDrawer = async () => {
-      if (!selectedTool.drawer) return;
-
-      try {
-        setLoading(true);
-        const result = await hardwareAPI.closeDrawer(selectedTool.drawer as '1' | '2' | '3' | '4');
-
-        if (result.success) {
-          showToast(`Tiroir ${selectedTool.drawer} fermé`, 'success', 2000);
-        }
-      } catch (error) {
-        console.warn('⚠️ Erreur fermeture tiroir:', error);
-        showToast('Erreur lors de la fermeture', 'error', 2000);
-      } finally {
-        setLoading(false);
-        // Recharger les données et retourner à la sélection
-        await loadBorrowsFromBackend();
-        await loadToolsFromBackend();
-        setSelectedTool(null);
-        setCurrentScreen('tool-selection');
-      }
-    };
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-        {/* Header fixe */}
-        <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-          <div className="flex items-center justify-between py-3 px-6 h-20">
-            <div className="flex items-center">
-              <LanguageSelector />
-            </div>
-            <div className="absolute left-1/2 transform -translate-x-1/2">
-              <Logo />
-            </div>
-            <div className="w-32"></div>
-          </div>
-        </div>
-
-        {/* Contenu principal */}
-        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-6">
-          <div className="max-w-3xl w-full">
-            <div className="bg-white rounded-3xl shadow-2xl p-12 border-2 border-green-200">
-
-              {/* Animation et icône */}
-              <div className="flex justify-center mb-8">
-                <div className="relative">
-                  <div className="w-32 h-32 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center animate-pulse shadow-xl">
-                    <Box className="w-16 h-16 text-white" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                    <span className="text-2xl">🔓</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Titre */}
-              <h2 className="text-4xl font-bold text-center text-slate-900 mb-4">
-                Drawer {selectedTool.drawer} is Open!
-              </h2>
-              <p className="text-xl text-center text-slate-600 mb-8">
-                Please retrieve your tool
-              </p>
-
-              {/* Info outil */}
-              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-6 mb-8 border-2 border-blue-200">
-                <div className="flex items-center gap-6">
-                  <div className="w-24 h-24 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-md">
-                    <img src={selectedTool.image} alt={selectedTool.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{getTranslatedToolName(selectedTool.name)}</h3>
-                    <p className="text-sm text-slate-600 font-medium">{t('category')}: {t(getCategoryTranslationKey(selectedTool.category))}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-8">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 mb-1">Take your tool</h4>
-                    <p className="text-sm text-slate-600">Carefully remove the tool from drawer {selectedTool.drawer}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 mb-8">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 mb-1">Close the drawer</h4>
-                    <p className="text-sm text-slate-600">Click the button below when you're done</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bouton fermer */}
-              <button
-                onClick={handleCloseDrawer}
-                disabled={loading}
-                className="w-full py-6 rounded-2xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-all font-bold text-xl shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                    <span>Closing...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-6 h-6" />
-                    <span>Close Drawer & Finish</span>
-                  </>
-                )}
-              </button>
-
-              {/* Note de sécurité */}
-              <div className="mt-6 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                <span>Please ensure the drawer is fully closed before leaving</span>
               </div>
             </div>
           </div>
@@ -2609,10 +2398,10 @@ export default function App() {
                           setCurrentScreen('confirm-borrow');
                         }}
                         className={`px-6 py-2 rounded-lg transition-all font-semibold ${borrow.status === 'overdue'
-                          ? 'bg-red-500 hover:bg-red-600 text-white'
-                          : borrow.isDueSoon
-                            ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                            : borrow.isDueSoon
+                              ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
                           }`}
                       >
                         {t('return')}
@@ -2696,10 +2485,10 @@ export default function App() {
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${borrow.status === 'returned' && !borrow.isLate
-                              ? 'bg-green-100 text-green-700'
-                              : borrow.isLate
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-blue-100 text-blue-700'
+                                ? 'bg-green-100 text-green-700'
+                                : borrow.isLate
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-blue-100 text-blue-700'
                               }`}>
                               {borrow.status === 'returned' && !borrow.isLate ? `✅ ${t('onTime')}` :
                                 borrow.isLate ? `❌ ${t('alertLate')} ${borrow.daysLate}j` : t('active')}
@@ -4253,8 +4042,8 @@ export default function App() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'student' ? 'bg-blue-100 text-blue-700' :
-                            user.role === 'professor' ? 'bg-purple-100 text-purple-700' :
-                              'bg-green-100 text-green-700'
+                              user.role === 'professor' ? 'bg-purple-100 text-purple-700' :
+                                'bg-green-100 text-green-700'
                             }`}>
                             {user.role === 'student' ? t('student') :
                               user.role === 'professor' ? t('professor') : t('technician')}
@@ -4367,7 +4156,7 @@ export default function App() {
                           const userData = {
                             fullName: formData.get('fullName') as string,
                             email: formData.get('email') as string,
-                            badgeId: scannedBadgeId || (formData.get('badgeId') as string),
+                            badgeId: formData.get('badgeId') as string,
                             role: formData.get('role') as string,
                             password: (formData.get('password') as string) || undefined
                           };
@@ -4382,7 +4171,7 @@ export default function App() {
                           const userData: any = {};
                           const fullName = formData.get('fullName') as string;
                           const email = formData.get('email') as string;
-                          const badgeId = scannedBadgeId || (formData.get('badgeId') as string);
+                          const badgeId = formData.get('badgeId') as string;
                           const role = formData.get('role') as string;
                           const password = formData.get('password') as string;
 
@@ -4449,29 +4238,13 @@ export default function App() {
 
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">Badge ID</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          name="badgeId"
-                          value={scannedBadgeId || selectedUser?.badgeId || ''}
-                          onChange={(e) => setScannedBadgeId(e.target.value)}
-                          required
-                          className="flex-1 px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          placeholder="Saisir manuellement ou scanner"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setBadgeScannerOpen(true)}
-                          className="px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold flex items-center gap-2 transition-all"
-                          title="Scanner un badge RFID"
-                        >
-                          <Scan className="w-5 h-5" />
-                          Scanner
-                        </button>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        💡 Cliquez sur "Scanner" pour lire le badge avec le lecteur RFID
-                      </p>
+                      <input
+                        type="text"
+                        name="badgeId"
+                        defaultValue={selectedUser?.badgeId}
+                        required
+                        className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
                     </div>
 
                     <div>
@@ -4560,19 +4333,6 @@ export default function App() {
                 )}
               </div>
             </div>
-          )}
-
-          {/* Scanner de Badge RFID */}
-          {badgeScannerOpen && (
-            <BadgeScanner
-              onBadgeScanned={(uid) => {
-                setScannedBadgeId(uid);
-                setBadgeScannerOpen(false);
-                showToast(`Badge scanné : ${uid}`, 'success');
-              }}
-              onClose={() => setBadgeScannerOpen(false)}
-              currentBadgeId={selectedUser?.badgeId}
-            />
           )}
 
           {/* Grande Modale de Confirmation - Suppression avec emprunts actifs */}
@@ -4831,8 +4591,8 @@ export default function App() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${tool.availableQuantity > 0
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
                             }`}>
                             {tool.availableQuantity}
                           </span>

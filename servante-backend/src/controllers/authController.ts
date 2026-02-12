@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // Générer un JWT
 const generateToken = (id: string): string => {
   return jwt.sign(
-    { id }, 
+    { id },
     String(process.env.JWT_SECRET || 'default_secret'),
     { expiresIn: String(process.env.JWT_EXPIRES_IN || '7d') }
   );
@@ -20,7 +20,10 @@ export const badgeScan = async (req: Request, res: Response): Promise<void> => {
   try {
     const { badgeId } = req.body;
 
-    if (!badgeId) {
+    console.log('📡 Badge scan request received:', { badgeId, type: typeof badgeId });
+
+    if (!badgeId || badgeId.trim() === '') {
+      console.log('❌ Badge ID is empty or undefined');
       res.status(400).json({
         success: false,
         message: 'Badge ID requis'
@@ -33,9 +36,11 @@ export const badgeScan = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
+      console.log(`❌ Badge not found in database: "${badgeId}"`);
       res.status(401).json({
         success: false,
-        message: 'Badge invalide'
+        message: 'Badge invalide',
+        badgeId: badgeId // Include badgeId in response for debugging
       });
       return;
     }

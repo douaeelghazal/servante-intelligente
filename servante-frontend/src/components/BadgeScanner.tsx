@@ -39,12 +39,15 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
     // Démarrer un nouveau scan
     const startScan = async () => {
         try {
+            console.log('🚀 Starting badge scan...');
             const response = await fetch(`${API_BASE_URL}/hardware/badge-scan/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
 
+            console.log('📡 Scan start response status:', response.status);
             const data = await response.json();
+            console.log('📡 Scan start response data:', data);
 
             if (data.success) {
                 setScanId(data.scanId);
@@ -54,11 +57,12 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                 // Commencer à poller pour le résultat
                 pollForResult(data.scanId);
             } else {
+                console.error('❌ Failed to start scan:', data);
                 setStatus('error');
                 setMessage(data.message || t('scanStartError'));
             }
         } catch (error) {
-            console.error('Erreur startScan:', error);
+            console.error('❌ Erreur startScan:', error);
             setStatus('error');
             setMessage(t('serverConnectionError'));
         }
@@ -87,21 +91,26 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                 const response = await fetch(`${API_BASE_URL}/hardware/badge-scan/${id}`);
                 const data = await response.json();
 
+                console.log(`📡 Poll attempt ${attempts}/${maxAttempts}:`, data);
+
                 if (data.success && data.uid) {
                     // Badge détecté !
+                    console.log('✅ Badge detected! UID:', data.uid);
                     setScannedUid(data.uid);
                     setStatus('success');
                     setMessage(t('badgeDetectedSuccess'));
                     isPollingRef.current = false;
 
                     try {
+                        console.log('🔐 Attempting authentication with UID:', data.uid);
                         const authResult = await onBadgeScanned(data.uid);
+                        console.log('🔐 Authentication result:', authResult);
                         if (authResult.success && authResult.userName) {
                             setUserName(authResult.userName);
                             setMessage(t('welcome', { userName: authResult.userName }));
                         }
                     } catch (error) {
-                        console.error('Erreur authentification:', error);
+                        console.error('❌ Erreur authentification:', error);
                     }
                 } else if (data.success && !data.uid) {
                     // Toujours en attente
@@ -110,12 +119,13 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                         setTimeout(poll, 1000);
                     }
                 } else {
+                    console.error('❌ Poll error:', data);
                     setStatus('error');
                     setMessage(data.message || t('scanError'));
                     isPollingRef.current = false;
                 }
             } catch (error) {
-                console.error('Erreur poll:', error);
+                console.error('❌ Erreur poll:', error);
                 setStatus('error');
                 setMessage(t('serverConnectionError'));
                 isPollingRef.current = false;
@@ -189,11 +199,10 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
 
                     {/* Message */}
                     <div className="text-center">
-                        <p className={`text-lg font-semibold mb-2 ${
-                            status === 'success' ? 'text-green-600' : 
-                            status === 'error' ? 'text-red-600' : 
-                            'text-gray-900'
-                        }`}>
+                        <p className={`text-lg font-semibold mb-2 ${status === 'success' ? 'text-green-600' :
+                                status === 'error' ? 'text-red-600' :
+                                    'text-gray-900'
+                            }`}>
                             {message}
                         </p>
                         {userName && status === 'success' && (
@@ -238,11 +247,10 @@ const BadgeScanner: React.FC<BadgeScannerProps> = ({ onBadgeScanned, onClose, cu
                                 if (scanId) cancelScan(scanId);
                                 onClose();
                             }}
-                            className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                                status === 'success'
+                            className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${status === 'success'
                                     ? 'bg-gradient-to-r from-green-600 to-green-500 text-white hover:from-green-700 hover:to-green-600 shadow-md hover:shadow-lg'
                                     : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-                            }`}
+                                }`}
                         >
                             {status === 'success' ? `✓ ${t('close')}` : t('cancel')}
                         </button>
