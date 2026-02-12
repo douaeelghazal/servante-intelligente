@@ -168,7 +168,7 @@ void autoCloseAllTogether() {
     delayMicroseconds(HOME_DELAY_US);
   }
 
-  digitalWrite(EN_PIN, HIGH);
+  digitalWrite(EN_PIN, LOW);  // Enable motors
 
   if (done[0] && done[1] && done[2] && done[3]) {
     Serial.println("[MOTOR] ✅ RECOVERY OK (all endstops reached)");
