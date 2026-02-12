@@ -1,286 +1,207 @@
-#include <math.h>
+// =====================================
+// SERVANTE INTELLIGENTE - CODE ARDUINO MOTEURS V2
+// Trapezoid acceleration profile
+// =====================================
 
-// ==================== PINS ====================
-#define EN_PIN  14
+// -------------------- TB6560 PINS --------------------
+#define EN_PIN   14
 
-#define STEP_X  2
-#define DIR_X   3
-#define END_X   26
+// Motor X
+#define STEP_X   2 
+#define DIR_X    3
+#define END_X    26
 
-#define STEP_Y  4
-#define DIR_Y   5
-#define END_Y   28
+// Motor Y
+#define STEP_Y   4
+#define DIR_Y    5
+#define END_Y    28
 
-#define STEP_Z  6
-#define DIR_Z   7
-#define END_Z   30
+// Motor Z
+#define STEP_Z   6
+#define DIR_Z    7
+#define END_Z    30
 
-#define STEP_A  22
-#define DIR_A   24
-#define END_A   32
+// Motor A
+#define STEP_A   22
+#define DIR_A    24
+#define END_A    32
 
-// ==================== ENDSTOP LOGIC ====================
-// You confirmed: pressed = 0
-#define END_PRESSED LOW
+// -------------------- VARIABLES & CALIBRATION --------------------
+int stepsPerRev = 400;   // NEMA 17 (0.9°)
+int microstep = 8;
+float pulleyPitch_mm = 8.0;
 
-// ==================== CALIBRATION ====================
-const int   stepsPerRev = 400;
-const int   microstep   = 2;
-const float mmPerRev    = 8.0;
+// Pas par mm
+float stepsPer_mm = (float)(stepsPerRev * microstep) / pulleyPitch_mm;
 
-const float stepsPer_mm = (float)(stepsPerRev * microstep) / mmPerRev;
+// Course tiroir
+const long DRAWER_DISTANCE_MM = 380;
+const long STEPS_TO_MOVE = (long)(DRAWER_DISTANCE_MM * stepsPer_mm);
 
-const long STROKE_MM     = 400;                     // 40 cm fixed
-const long STEPS_STROKE  = (long)(STROKE_MM * stepsPer_mm);
-const long CLOSE_EXTRA_STEPS = 5000;
+bool stopAll = true;
+char activeAxis = ' ';
 
-// ==================== SPEED PROFILES ====================
-float Vmax_open  = 12000.0f;
-float accel_open = 25000.0f;
 
-float Vmax_close  = 0.90f * 12000.0f;
-float accel_close = 0.90f * 25000.0f;
+// -------------------- LOI TRAPÈZE (AJOUT) --------------------
+float Vmax = 2500.0;        // pas / seconde
+float accel = 500.0;        // pas / seconde²
+float currentSpeed = 0;     // vitesse instantanée
+long accelSteps = 0;        // pas d'accélération
+long totalPlannedSteps = 0;// pas totaux du mouvement
 
-// Active profile
-float Vmax  = 4500.0f;
-float accel = 4000.0f;
-
-const float MIN_SPEED = 250.0f;
-const float VMAX_CAP  = 20000.0f;
-const float ACCEL_CAP = 25000.0f;
-
-// ==================== BOOT RECOVERY (ALL AXES CLOSE TOGETHER) ====================
-const unsigned int HOME_DELAY_US      = 200;   // lower=faster
-const unsigned long HOME_TIMEOUT_MS   = 6000;  // full recovery timeout
-
-// ==================== MOTOR STRUCT ====================
-struct MotorPins {
+// -------------------- STRUCTURE MOTEUR --------------------
+struct MotorState {
+  long stepsRemaining;
   int stepPin;
   int dirPin;
   int endPin;
   char id;
+  bool isClosing;
 };
 
-MotorPins M[4] = {
-  {STEP_X, DIR_X, END_X, 'x'},
-  {STEP_Y, DIR_Y, END_Y, 'y'},
-  {STEP_Z, DIR_Z, END_Z, 'z'},
-  {STEP_A, DIR_A, END_A, 'a'}
+MotorState motors[] = {
+  {0, STEP_X, DIR_X, END_X, 'x', false},
+  {0, STEP_Y, DIR_Y, END_Y, 'y', false},
+  {0, STEP_Z, DIR_Z, END_Z, 'z', false},
+  {0, STEP_A, DIR_A, END_A, 'a', false}
 };
 
-unsigned long lastCmdMs = 0;
-String lastCmd = "";
 
-// ==================== UTILS ====================
-inline bool endPressed(int pin) {
-  return (digitalRead(pin) == END_PRESSED);
-}
+// -------------------- FUNCTION : MOVEMENT --------------------
+void handleMotorMovement(MotorState& motor) {
 
-void pulseStep(int pin, unsigned long delayUs) {
-  digitalWrite(pin, HIGH);
-  delayMicroseconds(delayUs / 2);
-  digitalWrite(pin, LOW);
-  delayMicroseconds(delayUs / 2);
-}
+  if (motor.stepsRemaining > 0) {
 
-float speedTrapezoid(long done, long remain) {
-  float v1 = sqrtf(2.0f * accel * (float)done);
-  float v2 = sqrtf(2.0f * accel * (float)remain);
-  float v  = (v1 < v2) ? v1 : v2;
+    // --- Capteur de fin de course ---
+    bool endstopReached = (digitalRead(motor.endPin) == LOW);
 
-  if (v > Vmax) v = Vmax;
-  if (v < MIN_SPEED) v = MIN_SPEED;
-  return v;
-}
-
-void printEndstopsRaw() {
-  Serial.print("RAW endstops: ");
-  Serial.print("X="); Serial.print(digitalRead(END_X));
-  Serial.print(" Y="); Serial.print(digitalRead(END_Y));
-  Serial.print(" Z="); Serial.print(digitalRead(END_Z));
-  Serial.print(" A="); Serial.println(digitalRead(END_A));
-}
-
-// ==================== BOOT RECOVERY: CLOSE ALL TOGETHER (FIXED) ====================
-// Non-blocking debounce per axis using counters
-void autoCloseAllTogether() {
-  Serial.println("=== RECOVERY: close all axes to endstops (simultaneous) ===");
-
-  // CLOSE direction for all
-  for (int i=0;i<4;i++) digitalWrite(M[i].dirPin, LOW);
-
-  // enable driver
-  digitalWrite(EN_PIN, LOW);
-  delayMicroseconds(50);
-
-  bool done[4] = {false,false,false,false};
-  uint8_t stableCnt[4] = {0,0,0,0};  // debounce counters (0..3)
-
-  unsigned long t0 = millis();
-
-  while (!(done[0] && done[1] && done[2] && done[3])) {
-    if (millis() - t0 > HOME_TIMEOUT_MS) {
-      Serial.println("⚠️ RECOVERY TIMEOUT (check wiring/endstops)");
-      Serial.print("done: X="); Serial.print(done[0]);
-      Serial.print(" Y="); Serial.print(done[1]);
-      Serial.print(" Z="); Serial.print(done[2]);
-      Serial.print(" A="); Serial.println(done[3]);
-      printEndstopsRaw();
-      break;
+    if (motor.isClosing && endstopReached) {
+      Serial.print("🛑 Moteur "); Serial.print(motor.id);
+      Serial.println(" : Fermeture atteinte");
+      motor.stepsRemaining = 0;
+      return;
     }
 
-    // ----- Update debounce per axis -----
-    for (int i=0;i<4;i++) {
-      if (done[i]) continue;
-
-      if (endPressed(M[i].endPin)) {
-        if (stableCnt[i] < 3) stableCnt[i]++;
-        if (stableCnt[i] >= 3) {
-          done[i] = true;
-          Serial.print("✅ Endstop reached for axis ");
-          Serial.println(M[i].id);
-        }
-      } else {
-        stableCnt[i] = 0;
-      }
+    if (!motor.isClosing && endstopReached) {
+      Serial.print("⚠️ Moteur "); Serial.print(motor.id);
+      Serial.println(" : Capteur atteint en ouverture");
+      motor.stepsRemaining = 0;
+      return;
     }
 
-    // ----- STEP only axes not done -----
-    for (int i=0;i<4;i++) {
-      if (!done[i]) digitalWrite(M[i].stepPin, HIGH);
-    }
-    delayMicroseconds(HOME_DELAY_US);
-    for (int i=0;i<4;i++) {
-      if (!done[i]) digitalWrite(M[i].stepPin, LOW);
-    }
-    delayMicroseconds(HOME_DELAY_US);
-  }
+    // --------- LOI TRAPÈZE (AJOUT) ---------
+    long stepsDone = totalPlannedSteps - motor.stepsRemaining;
 
-  digitalWrite(EN_PIN, LOW); // Enable motors after recovery
+    if (stepsDone < accelSteps) {
+      currentSpeed += accel * 0.001;       // accélération
+    }
+    else if (motor.stepsRemaining < accelSteps) {
+      currentSpeed -= accel * 0.001;       // décélération
+    }
+    else {
+      currentSpeed = Vmax;                 // vitesse constante
+    }
 
-  if (done[0] && done[1] && done[2] && done[3]) {
-    Serial.println("✅ RECOVERY OK (all endstops reached)");
+    if (currentSpeed < 150) currentSpeed = 150; // sécurité
+
+    float delayMicro = 1000000.0 / currentSpeed;
+
+    // --------- STEP ---------
+    digitalWrite(motor.stepPin, HIGH);
+    delayMicroseconds(delayMicro / 2);
+    digitalWrite(motor.stepPin, LOW);
+    delayMicroseconds(delayMicro / 2);
+
+    motor.stepsRemaining--;
+
   } else {
-    Serial.println("⚠️ RECOVERY finished with warnings");
+    Serial.print("✅ Moteur "); Serial.print(motor.id);
+    Serial.println(" : Mouvement terminé");
+    activeAxis = ' ';
+    stopAll = true;
   }
 }
 
-// ==================== SETUP ====================
+
+// -------------------- SETUP --------------------
 void setup() {
   Serial.begin(9600);
 
   pinMode(EN_PIN, OUTPUT);
-  digitalWrite(EN_PIN, LOW); // Enable motors from startup
+  digitalWrite(EN_PIN, LOW);
 
-  // pins
-  pinMode(STEP_X, OUTPUT); pinMode(DIR_X, OUTPUT); pinMode(END_X, INPUT_PULLUP);
-  pinMode(STEP_Y, OUTPUT); pinMode(DIR_Y, OUTPUT); pinMode(END_Y, INPUT_PULLUP);
-  pinMode(STEP_Z, OUTPUT); pinMode(DIR_Z, OUTPUT); pinMode(END_Z, INPUT_PULLUP);
-  pinMode(STEP_A, OUTPUT); pinMode(DIR_A, OUTPUT); pinMode(END_A, INPUT_PULLUP);
-
-  digitalWrite(STEP_X, LOW);
-  digitalWrite(STEP_Y, LOW);
-  digitalWrite(STEP_Z, LOW);
-  digitalWrite(STEP_A, LOW);
-
-  // caps
-  if (Vmax_open  > VMAX_CAP)  Vmax_open  = VMAX_CAP;
-  if (accel_open > ACCEL_CAP) accel_open = ACCEL_CAP;
-  if (Vmax_close > VMAX_CAP)  Vmax_close = VMAX_CAP;
-  if (accel_close> ACCEL_CAP) accel_close= ACCEL_CAP;
-
-  Serial.println("BOOT OK.");
-  Serial.println("Commands: xo xf yo yf zo zf ao af | stop=s | e=raw endstops");
-
-  autoCloseAllTogether();
-
-  Serial.println("READY.");
+  for (int i = 0; i < 4; i++) {
+    pinMode(motors[i].stepPin, OUTPUT);
+    pinMode(motors[i].dirPin, OUTPUT);
+    pinMode(motors[i].endPin, INPUT_PULLUP);
+    digitalWrite(motors[i].dirPin, HIGH);
+  }
 }
 
-// ==================== LOOP ====================
+
+// -------------------- LOOP --------------------
 void loop() {
-  if (!Serial.available()) return;
 
-  String cmd = Serial.readStringUntil('\n');
-  cmd.trim(); cmd.toLowerCase();
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.toLowerCase();
 
-  unsigned long now = millis();
-  if (cmd == lastCmd && (now - lastCmdMs) < 250) {
-    Serial.println("⚠️ Duplicate command ignored");
-    return;
-  }
-  lastCmd = cmd; lastCmdMs = now;
+    char action = input.charAt(0);
+    char axis = input.charAt(1);
 
-  if (cmd == "e") { printEndstopsRaw(); return; }
-
-  if (cmd == "s" || cmd == "stop") {
-    digitalWrite(EN_PIN, HIGH);
-    Serial.println("🛑 STOP");
-    return;
-  }
-
-  if (cmd.length() < 2) { Serial.println("Format: xo/xf/..."); return; }
-
-  char axis = cmd.charAt(0);
-  char action = cmd.charAt(1);
-
-  int stepPin=-1, dirPin=-1, endPin=-1;
-  if (axis=='x') { stepPin=STEP_X; dirPin=DIR_X; endPin=END_X; }
-  else if (axis=='y') { stepPin=STEP_Y; dirPin=DIR_Y; endPin=END_Y; }
-  else if (axis=='z') { stepPin=STEP_Z; dirPin=DIR_Z; endPin=END_Z; }
-  else if (axis=='a') { stepPin=STEP_A; dirPin=DIR_A; endPin=END_A; }
-  else { Serial.println("Axis must be x y z a"); return; }
-
-  if (endPressed(endPin)) {
-    Serial.println("🛑 Endstop already pressed -> refusing motion");
-    return;
-  }
-
-  long plannedSteps = 0;
-
-  if (action=='o') {
-    Vmax  = Vmax_open;
-    accel = accel_open;
-    digitalWrite(dirPin, HIGH);
-    plannedSteps = STEPS_STROKE;
-  } else if (action=='f') {
-    Vmax  = Vmax_close;
-    accel = accel_close;
-    digitalWrite(dirPin, LOW);
-    plannedSteps = STEPS_STROKE + CLOSE_EXTRA_STEPS;
-  } else {
-    Serial.println("Action must be o or f");
-    return;
-  }
-
-  digitalWrite(EN_PIN, LOW);
-  delayMicroseconds(50);
-
-  Serial.print("▶ "); Serial.print(axis);
-  Serial.print(action=='o' ? " OPEN" : " CLOSE");
-  Serial.print(" | steps="); Serial.println(plannedSteps);
-
-  unsigned long t0 = millis();
-  long stepsRemaining = plannedSteps;
-
-  while (stepsRemaining > 0) {
-    if (endPressed(endPin)) {
-      Serial.println("🛑 ENDSTOP");
-      break;
+    // ---- ARRÊT D'URGENCE ----
+    if (action == 's') {
+      stopAll = true;
+      activeAxis = ' ';
+      for (int i = 0; i < 4; i++) motors[i].stepsRemaining = 0;
+      Serial.println("🛑 Arrêt d'urgence");
+      return;
     }
 
-    long done = plannedSteps - stepsRemaining;
-    float v = speedTrapezoid(done, stepsRemaining);
-    unsigned long delayUs = (unsigned long)(1000000.0f / v);
-    if (delayUs < 2) delayUs = 2;
+    // ---- COMMANDE AXE ----
+    if (activeAxis == ' ' && (action == 'o' || action == 'f')) {
 
-    pulseStep(stepPin, delayUs);
-    stepsRemaining--;
+      int motorIndex = -1;
+      if (axis == 'x') motorIndex = 0;
+      else if (axis == 'y') motorIndex = 1;
+      else if (axis == 'z') motorIndex = 2;
+      else if (axis == 'a') motorIndex = 3;
+
+      if (motorIndex != -1) {
+        MotorState& m = motors[motorIndex];
+
+        for (int i = 0; i < 4; i++) motors[i].stepsRemaining = 0;
+
+        activeAxis = m.id;
+        stopAll = false;
+
+        // --------- INITIALISATION TRAPÈZE (AJOUT) ---------
+        totalPlannedSteps = (action == 'o') ? STEPS_TO_MOVE : (STEPS_TO_MOVE + 20000);
+        accelSteps = (Vmax * Vmax) / (2 * accel);
+        if (2 * accelSteps > totalPlannedSteps)
+          accelSteps = totalPlannedSteps / 2;
+        currentSpeed = 0;
+        // -----------------------------------------------
+
+        if (action == 'o') {
+          digitalWrite(m.dirPin, HIGH);
+          m.stepsRemaining = STEPS_TO_MOVE;
+          m.isClosing = false;
+        } else {
+          digitalWrite(m.dirPin, LOW);
+          m.stepsRemaining = STEPS_TO_MOVE + 20000;
+          m.isClosing = true;
+        }
+      }
+    }
   }
 
-  digitalWrite(EN_PIN, HIGH);
+  if (stopAll || activeAxis == ' ') return;
 
-  float t = (millis() - t0)/1000.0f;
-  Serial.print("✅ DONE in "); Serial.print(t,2);
-  Serial.print(" s"); Serial.println();
+  for (int i = 0; i < 4; i++) {
+    if (motors[i].id == activeAxis) {
+      handleMotorMovement(motors[i]);
+      break;
+    }
+  }
 }

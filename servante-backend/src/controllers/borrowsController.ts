@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { motorService } from '../services/motorService';
+import axios from 'axios';
 
 const prisma = new PrismaClient();
+const HARDWARE_API = process.env.HARDWARE_API || 'http://localhost:3000/api/hardware';
 
 // Helper: Calculer la date limite (7 jours par défaut)
 const calculateDueDate = (borrowDate: Date, daysToAdd: number = 7): Date => {
@@ -116,12 +117,10 @@ export const createBorrow = async (req: Request, res: Response): Promise<void> =
     if (tool.drawer) {
       try {
         console.log(`🤖 Ouverture du tiroir ${tool.drawer} pour l'outil: ${tool.name}`);
-        const success = await motorService.openDrawer(tool.drawer);
-        if (success) {
-          console.log(`✅ Tiroir ${tool.drawer} ouvert avec succès`);
-        } else {
-          console.warn(`⚠️ Échec ouverture tiroir ${tool.drawer}`);
-        }
+        await axios.post(`${HARDWARE_API}/commands`, {
+          type: 'OPEN',
+          drawer: tool.drawer.toLowerCase()
+        });
       } catch (motorError) {
         console.error(`⚠️ Erreur lors de l'ouverture du tiroir: ${tool.drawer}`, motorError);
         // Ne pas échouer l'emprunt si le moteur échoue
@@ -198,22 +197,6 @@ export const returnBorrow = async (req: Request, res: Response): Promise<void> =
         borrowedQuantity: { decrement: 1 }
       }
     });
-
-    // 🔧 FERMER LE TIROIR SI DÉFINI
-    if (borrow.tool.drawer) {
-      try {
-        console.log(`🤖 Fermeture du tiroir ${borrow.tool.drawer} après retour: ${borrow.tool.name}`);
-        const success = await motorService.closeDrawer(borrow.tool.drawer);
-        if (success) {
-          console.log(`✅ Tiroir ${borrow.tool.drawer} fermé avec succès`);
-        } else {
-          console.warn(`⚠️ Échec fermeture tiroir ${borrow.tool.drawer}`);
-        }
-      } catch (motorError) {
-        console.error(`⚠️ Erreur lors de la fermeture du tiroir: ${borrow.tool.drawer}`, motorError);
-        // Ne pas échouer la transaction si le moteur échoue
-      }
-    }
 
     res.status(200).json({
       success: true,

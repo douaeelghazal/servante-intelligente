@@ -2,9 +2,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
-import rfidRoutes from './routes/rfid.js';
-import { rfidService } from './services/rfidService.js';
-import { motorService } from './services/motorService.js';
+
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -72,7 +70,6 @@ app.use('/api/users', usersRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/hardware', hardwareRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/rfid', rfidRoutes);
 
 // ============================================
 // GESTION DES ERREURS
@@ -91,39 +88,15 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 // Fonction pour démarrer le serveur
-async function startServer() {
+const startServer = async () => {
   try {
     // Tester la connexion à la base de données
     await prisma.$connect();
     console.log('✅ Connexion à PostgreSQL réussie');
 
-    // Initialiser le service moteur (qui contient aussi le RFID maintenant)
-    try {
-      await motorService.initialize();
-      const motorStatus = motorService.getStatus();
-      if (motorStatus.connected) {
-        console.log(`✅ Arduino complet connecté sur ${motorStatus.port} (RFID + Moteurs)`);
-
-        // Initialiser le service RFID sur le même port
-        try {
-          const connected = await rfidService.initialize();
-          if (connected) {
-            console.log(`✅ Lecteur RFID initialisé sur le même port`);
-          }
-        } catch (error) {
-          console.log('⚠️ Erreur initialisation RFID:', error);
-        }
-      } else {
-        console.log('⚠️ Arduino non trouvé. Le serveur démarre sans matériel.');
-      }
-    } catch (error) {
-      console.log('⚠️ Impossible d\'initialiser l\'Arduino:', error);
-      console.log('   Le serveur démarre sans matériel. Branchez l\'Arduino et redémarrez.');
-    }
-
     // Démarrer le serveur
     app.listen(PORT, () => {
-      console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+      console.log(`🚀 Serveur démarré sur le port ${PORT}`);
       console.log(`📍 Environnement: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
@@ -132,22 +105,13 @@ async function startServer() {
     console.error('❌ Erreur lors du démarrage du serveur:', error);
     process.exit(1);
   }
-}
+};
 
 // Gestion de l'arrêt gracieux
 const gracefulShutdown = async () => {
   console.log('\n⏳ Arrêt du serveur en cours...');
-
+  
   try {
-    // Fermer le service RFID
-    await rfidService.close();
-    console.log('✅ Service RFID fermé');
-
-    // Fermer le service moteur
-    await motorService.close();
-    console.log('✅ Service moteur fermé');
-
-    // Déconnecter la base de données
     await prisma.$disconnect();
     console.log('✅ Déconnexion de la base de données réussie');
     process.exit(0);

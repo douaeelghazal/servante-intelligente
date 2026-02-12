@@ -15,8 +15,8 @@
  *   (ou sur Linux: /dev/ttyUSB0)
  */
 
-const { SerialPort } = require('serialport');
-const { ReadlineParser } = require('@serialport/parser-readline');
+const SerialPort = require('serialport');
+const Readline = require('@serialport/parser-readline');
 const axios = require('axios');
 
 // ============================================
@@ -45,8 +45,8 @@ let parser;
 let isConnected = false;
 
 try {
-  port = new SerialPort({ path: SERIAL_PORT, baudRate: BAUD_RATE });
-  parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+  port = new SerialPort(SERIAL_PORT, { baudRate: BAUD_RATE });
+  parser = port.pipe(new Readline({ delimiter: '\n' }));
   
   port.on('open', () => {
     isConnected = true;
