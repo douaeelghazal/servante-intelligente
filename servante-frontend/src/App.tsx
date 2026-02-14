@@ -2041,30 +2041,69 @@ export default function App() {
         setLoading(true);
 
         if (isReturnMode) {
-          // ✅ MODE RETOUR - Marquer comme retourné
-          const activeBorrow = allBorrows.find(
-            b => b.toolId === selectedTool.id &&
-              b.userName === currentUser.fullName &&
-              (b.status === 'active' || b.status === 'overdue')
-          );
-
-          if (!activeBorrow) {
-            alert(`❌ ${t('noBorrowFound')}`);
-            return;
-          }
-
-          const result = await borrowsAPI.markAsReturned(activeBorrow.id);
-
-          if (result.success) {
-            alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('returnSuccess')}!`);
-            // Recharger les données
-            await loadBorrowsFromBackend();
-            await loadToolsFromBackend();
-            setSelectedTool(null);
-            setIsReturnMode(false);
-            setCurrentScreen('tool-selection');
+          // ✅ MODE RETOUR - Ouvrir le tiroir d'abord, puis marquer comme retourné après fermeture
+          if (selectedTool.drawer && ['1', '2', '3', '4'].includes(selectedTool.drawer)) {
+            try {
+              console.log(`🔓 Ouverture du tiroir ${selectedTool.drawer} pour retour de ${selectedTool.name}...`);
+              const drawerResult = await hardwareAPI.openDrawer(selectedTool.drawer as '1' | '2' | '3' | '4');
+              if (drawerResult.success) {
+                setCurrentScreen('drawer-open');
+              } else {
+                // Fallback si le tiroir ne s'ouvre pas
+                const activeBorrow = allBorrows.find(
+                  b => b.toolId === selectedTool.id &&
+                    b.userName === currentUser.fullName &&
+                    (b.status === 'active' || b.status === 'overdue')
+                );
+                if (activeBorrow) {
+                  await borrowsAPI.markAsReturned(activeBorrow.id);
+                }
+                alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('returnSuccess')}!`);
+                await loadBorrowsFromBackend();
+                await loadToolsFromBackend();
+                setSelectedTool(null);
+                setIsReturnMode(false);
+                setCurrentScreen('tool-selection');
+              }
+            } catch (error) {
+              console.warn('⚠️ Moteurs non disponibles:', error);
+              const activeBorrow = allBorrows.find(
+                b => b.toolId === selectedTool.id &&
+                  b.userName === currentUser.fullName &&
+                  (b.status === 'active' || b.status === 'overdue')
+              );
+              if (activeBorrow) {
+                await borrowsAPI.markAsReturned(activeBorrow.id);
+              }
+              alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('returnSuccess')}!`);
+              await loadBorrowsFromBackend();
+              await loadToolsFromBackend();
+              setSelectedTool(null);
+              setIsReturnMode(false);
+              setCurrentScreen('tool-selection');
+            }
           } else {
-            alert(`❌ ${t('returnError')}`);
+            // Pas de tiroir assigné - retour direct
+            const activeBorrow = allBorrows.find(
+              b => b.toolId === selectedTool.id &&
+                b.userName === currentUser.fullName &&
+                (b.status === 'active' || b.status === 'overdue')
+            );
+            if (!activeBorrow) {
+              alert(`❌ ${t('noBorrowFound')}`);
+              return;
+            }
+            const result = await borrowsAPI.markAsReturned(activeBorrow.id);
+            if (result.success) {
+              alert(`✅ ${getTranslatedToolName(selectedTool.name)} ${t('returnSuccess')}!`);
+              await loadBorrowsFromBackend();
+              await loadToolsFromBackend();
+              setSelectedTool(null);
+              setIsReturnMode(false);
+              setCurrentScreen('tool-selection');
+            } else {
+              alert(`❌ ${t('returnError')}`);
+            }
           }
         } else {
           // ✅ MODE EMPRUNT - Créer un nouvel emprunt
@@ -2247,15 +2286,27 @@ export default function App() {
         if (result.success) {
           showToast(`Tiroir ${selectedTool.drawer} fermé`, 'success', 2000);
         }
+
+        // If return mode, mark the borrow as returned after closing the drawer
+        if (isReturnMode && currentUser) {
+          const activeBorrow = allBorrows.find(
+            b => b.toolId === selectedTool.id &&
+              b.userName === currentUser.fullName &&
+              (b.status === 'active' || b.status === 'overdue')
+          );
+          if (activeBorrow) {
+            await borrowsAPI.markAsReturned(activeBorrow.id);
+          }
+        }
       } catch (error) {
         console.warn('⚠️ Erreur fermeture tiroir:', error);
         showToast('Erreur lors de la fermeture', 'error', 2000);
       } finally {
         setLoading(false);
-        // Recharger les données et retourner à la sélection
         await loadBorrowsFromBackend();
         await loadToolsFromBackend();
         setSelectedTool(null);
+        setIsReturnMode(false);
         setCurrentScreen('tool-selection');
       }
     };
@@ -2294,10 +2345,10 @@ export default function App() {
 
               {/* Titre */}
               <h2 className="text-4xl font-bold text-center text-slate-900 mb-4">
-                Drawer {selectedTool.drawer} is Open!
+                {t('drawerIsOpen', { drawer: selectedTool.drawer })}
               </h2>
               <p className="text-xl text-center text-slate-600 mb-8">
-                Please retrieve your tool
+                {isReturnMode ? t('pleaseReturnYourTool') : t('pleaseRetrieveYourTool') || 'Please retrieve your tool'}
               </p>
 
               {/* Info outil */}
@@ -2320,8 +2371,8 @@ export default function App() {
                     1
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 mb-1">Take your tool</h4>
-                    <p className="text-sm text-slate-600">Carefully remove the tool from drawer {selectedTool.drawer}</p>
+                    <h4 className="font-bold text-slate-900 mb-1">{isReturnMode ? t('placeToolInDrawer') : 'Take your tool'}</h4>
+                    <p className="text-sm text-slate-600">{isReturnMode ? t('placeToolInDrawerDesc', { drawer: selectedTool.drawer }) : `Carefully remove the tool from drawer ${selectedTool.drawer}`}</p>
                   </div>
                 </div>
               </div>
