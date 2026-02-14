@@ -165,6 +165,7 @@ export const sendAck = (req: Request, res: Response): void => {
 // ============================================
 import express from 'express';
 import { startBadgeScan, checkBadgeScan, cancelBadgeScan, receiveRFIDWithScan } from '../controllers/badgeScanController';
+import { openDrawer, closeDrawer, stopMotors, getMotorStatus } from '../controllers/motorController';
 
 const router = express.Router();
 
@@ -179,5 +180,11 @@ router.post('/rfid', receiveRFIDWithScan);
 router.post('/badge-scan/start', startBadgeScan);
 router.get('/badge-scan/:scanId', checkBadgeScan);
 router.delete('/badge-scan/:scanId', cancelBadgeScan);
+
+// Motor/drawer control endpoints
+router.post('/drawer/open', openDrawer);
+router.post('/drawer/close', closeDrawer);
+router.post('/motor/stop', stopMotors);
+router.get('/motor/status', getMotorStatus);
 
 export default router;

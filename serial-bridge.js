@@ -15,8 +15,8 @@
  *   (ou sur Linux: /dev/ttyUSB0)
  */
 
-const SerialPort = require('serialport');
-const Readline = require('@serialport/parser-readline');
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
 const axios = require('axios');
 
 // ============================================
@@ -45,9 +45,9 @@ let parser;
 let isConnected = false;
 
 try {
-  port = new SerialPort(SERIAL_PORT, { baudRate: BAUD_RATE });
-  parser = port.pipe(new Readline({ delimiter: '\n' }));
-  
+  port = new SerialPort({ path: SERIAL_PORT, baudRate: BAUD_RATE });
+  parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+
   port.on('open', () => {
     isConnected = true;
     console.log('✅ Port série ouvert avec succès');
@@ -74,7 +74,7 @@ try {
 
 parser.on('data', async (line) => {
   line = line.trim();
-  
+
   if (!line) return;
 
   console.log(`\n📨 Arduino → Bridge: "${line}"`);
@@ -160,9 +160,9 @@ async function pollAndSendCommands() {
       if (cmd.status === 'PENDING') {
         // Format: OPEN:x:cmd-123 ou CLOSE:x:cmd-123
         const txt = `${cmd.type.toUpperCase()}:${cmd.drawer}:${cmd.id}\n`;
-        
+
         console.log(`\n📤 Bridge → Arduino: "${txt.trim()}"`);
-        
+
         try {
           port.write(txt);
 
@@ -172,7 +172,7 @@ async function pollAndSendCommands() {
             { result: 'SENT', message: 'commande envoyée au port série' },
             { timeout: 5000 }
           );
-          
+
           console.log(`   ✅ Commande envoyée et marquée SENT au backend`);
         } catch (err) {
           console.error(`   ❌ Erreur lors de l'envoi: ${err.message}`);

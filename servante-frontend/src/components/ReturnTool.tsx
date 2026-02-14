@@ -137,6 +137,20 @@ const ReturnTool: React.FC<ReturnToolProps> = ({ onBack, currentUser }) => {
       setReturning(true);
       setStatus('closing');
 
+      // Close the drawer first
+      if (selectedBorrow.tool.drawer) {
+        try {
+          await fetch(`${import.meta.env.VITE_API_URL}/hardware/drawer/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ drawerNumber: selectedBorrow.tool.drawer.toString() }),
+          });
+          console.log(`✅ Drawer ${selectedBorrow.tool.drawer} closing`);
+        } catch (error) {
+          console.error('Error closing drawer:', error);
+        }
+      }
+
       const result = await borrowsAPI.return(selectedBorrow.id);
 
       if (result.success) {

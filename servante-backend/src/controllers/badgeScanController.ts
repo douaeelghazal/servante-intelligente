@@ -137,6 +137,24 @@ export const receiveRFIDWithScan = async (req: Request, res: Response): Promise<
 };
 
 /**
+ * Associate a UID with the first waiting pending scan.
+ * Called from rfidService when a badge is read from serial.
+ */
+export function associateUidWithPendingScan(uid: string): boolean {
+    const waitingScan = Array.from(pendingScans.entries()).find(
+        ([_, scan]) => !scan.uid
+    );
+
+    if (waitingScan) {
+        const [scanId, scan] = waitingScan;
+        scan.uid = uid.toUpperCase();
+        console.log(`📋 UID associé au scan (via serial): ${scanId} → ${uid.toUpperCase()}`);
+        return true;
+    }
+    return false;
+}
+
+/**
  * Nettoyer les scans de plus de 5 minutes
  */
 function cleanOldScans() {

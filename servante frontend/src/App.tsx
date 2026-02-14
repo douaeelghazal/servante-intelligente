@@ -38,7 +38,8 @@ import {
   Bell,
   CreditCard,
   SortAsc,
-  Plus
+  Plus,
+  Scan
 } from "lucide-react";
 import {
   BarChart,
@@ -80,6 +81,7 @@ import { ToastContainer, Toast } from './components/Toast';
 import UserNotifications from './components/UserNotifications';
 import UserSettings from './components/UserSettings';
 import AdminSettings from './components/AdminSettings';
+import BadgeScanner from './components/BadgeScanner';
 
 // ============================================
 // IMPORTS - API Backend
@@ -657,8 +659,8 @@ const AdminSidebar: React.FC<{
               key={item.id}
               onClick={() => setCurrentScreen(item.id as Screen)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${currentScreen === item.id
-                  ? 'bg-navy text-white shadow-md'
-                  : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-navy text-white shadow-md'
+                : 'text-gray-700 hover:bg-gray-100'
                 }`}
             >
               {item.icon}
@@ -902,8 +904,8 @@ const AdminBorrowsTable: React.FC<{
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${isOverdue ? 'bg-gradient-to-br from-red-600 to-red-800' :
-                          isDueSoon ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
-                            'bg-gradient-to-br from-blue-600 to-blue-800'
+                        isDueSoon ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
+                          'bg-gradient-to-br from-blue-600 to-blue-800'
                         }`}>
                         {borrow.userName.charAt(0)}
                       </div>
@@ -949,8 +951,8 @@ const AdminBorrowsTable: React.FC<{
                       <button
                         onClick={() => onSendEmail(borrow)}
                         className={`px-3 py-1.5 rounded-lg text-white font-semibold text-xs transition-all ${isOverdue
-                            ? 'bg-red-600 hover:bg-red-700'
-                            : 'bg-amber-600 hover:bg-amber-700'
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-amber-600 hover:bg-amber-700'
                           }`}
                       >
                         {t('send')}
@@ -1062,6 +1064,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [allBorrows, setAllBorrows] = useState<BorrowRecord[]>([]);
   const [borrowsLoading, setBorrowsLoading] = useState(false);
+  const [showBadgeScanner, setShowBadgeScanner] = useState(false);
   // États pour la gestion des utilisateurs
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1071,6 +1074,8 @@ export default function App() {
   const [showDeleteConfirmWithBorrows, setShowDeleteConfirmWithBorrows] = useState(false);
   const [userActiveBorrowsCount, setUserActiveBorrowsCount] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [badgeScannerOpen, setBadgeScannerOpen] = useState(false);
+  const [scannedBadgeId, setScannedBadgeId] = useState<string>('');
 
   // États pour la gestion des outils
   const [selectedToolForEdit, setSelectedToolForEdit] = useState<Tool | null>(null);
@@ -1450,7 +1455,37 @@ export default function App() {
   // ============================================
   // ÉCRAN 1 - Scan de badge
   // ============================================
-  // Old test function removed - now using BadgeScanner modal component
+  const handleBadgeScanned = async (badgeId: string): Promise<{ success: boolean; userName?: string }> => {
+    try {
+      console.log('🔍 Attempting login with Badge ID:', badgeId);
+      const result = await authAPI.badgeScan(badgeId);
+
+      if (result.success) {
+        console.log('✅ Login réussi:', result.data.user);
+        setCurrentUser(result.data.user);
+
+        // Attendre 1.5 secondes pour montrer le message de bienvenue
+        setTimeout(() => {
+          setShowBadgeScanner(false);
+          setCurrentScreen('tool-selection');
+        }, 1500);
+
+        return { success: true, userName: result.data.user.fullName };
+      } else {
+        console.error('❌ Badge invalide:', badgeId);
+        alert(`${t('invalidBadge')}\\n\\nBadge ID: ${badgeId}\\n\\nPlease register this badge in the admin panel.`);
+        setShowBadgeScanner(false);
+        return { success: false };
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur login:', error);
+      console.error('Badge ID that failed:', badgeId);
+      const errorMsg = error.response?.data?.message || t('connectionError');
+      alert(`${errorMsg}\\n\\nBadge ID: ${badgeId}`);
+      setShowBadgeScanner(false);
+      return { success: false };
+    }
+  };
 
   // ============================================
   // ÉCRAN - Connexion utilisateur (Email + Mot de passe)
@@ -1536,6 +1571,14 @@ export default function App() {
             {t('userLogin')}
           </button>
         </main>
+
+        {/* Scanner de badge */}
+        {showBadgeScanner && (
+          <BadgeScanner
+            onBadgeScanned={handleBadgeScanned}
+            onClose={() => setShowBadgeScanner(false)}
+          />
+        )}
       </div>
     );
   }
@@ -1677,8 +1720,8 @@ export default function App() {
                       <button
                         onClick={() => setAvailabilityFilter('all')}
                         className={`w-full px-5 py-3.5 rounded-xl font-semibold transition-all text-left flex items-center justify-between shadow-sm ${availabilityFilter === 'all'
-                            ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         <span>{t('all')}</span>
@@ -1690,8 +1733,8 @@ export default function App() {
                       <button
                         onClick={() => setAvailabilityFilter('available')}
                         className={`w-full px-5 py-3.5 rounded-xl font-semibold transition-all text-left flex items-center justify-between shadow-sm ${availabilityFilter === 'available'
-                            ? 'bg-emerald-500 text-white shadow-md scale-[1.02]'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          ? 'bg-emerald-500 text-white shadow-md scale-[1.02]'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         <span className="flex items-center gap-2">
@@ -1706,8 +1749,8 @@ export default function App() {
                       <button
                         onClick={() => setAvailabilityFilter('borrowed')}
                         className={`w-full px-5 py-3.5 rounded-xl font-semibold transition-all text-left flex items-center justify-between shadow-sm ${availabilityFilter === 'borrowed'
-                            ? 'bg-red-500 text-white shadow-md scale-[1.02]'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          ? 'bg-red-500 text-white shadow-md scale-[1.02]'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         <span>{t('borrowedOnly')}</span>
@@ -1727,8 +1770,8 @@ export default function App() {
                       <button
                         onClick={() => setSelectedCategory(ALL_CATEGORIES)}
                         className={`w-full px-4 py-3 rounded-xl font-medium transition-all text-left shadow-sm ${selectedCategory === ALL_CATEGORIES
-                            ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         {t('categoryAll')}
@@ -1739,8 +1782,8 @@ export default function App() {
                           key={cat}
                           onClick={() => setSelectedCategory(cat)}
                           className={`w-full px-4 py-3 rounded-xl font-medium transition-all text-left shadow-sm ${selectedCategory === cat
-                              ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                         >
                           {t(getCategoryTranslationKey(cat))}
@@ -1761,8 +1804,8 @@ export default function App() {
                             key={size.key}
                             onClick={() => toggleSize(size.key)}
                             className={`px-4 py-3 rounded-xl font-semibold text-sm transition-all shadow-sm ${selectedSizes.includes(size.key)
-                                ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                              ? 'bg-[#0f2b56] text-white shadow-md scale-[1.02]'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                               }`}
                           >
                             {t(size.label)}
@@ -1797,8 +1840,8 @@ export default function App() {
                         <button
                           onClick={() => setViewMode('grid')}
                           className={`flex-1 p-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${viewMode === 'grid'
-                              ? 'bg-slate-900 text-white shadow-md'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-slate-900 text-white shadow-md'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                         >
                           <Grid className="w-5 h-5" />
@@ -1806,8 +1849,8 @@ export default function App() {
                         <button
                           onClick={() => setViewMode('list')}
                           className={`flex-1 p-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${viewMode === 'list'
-                              ? 'bg-slate-900 text-white shadow-md'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-slate-900 text-white shadow-md'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                         >
                           <List className="w-5 h-5" />
@@ -1839,15 +1882,15 @@ export default function App() {
                     }
                   }}
                   className={`group p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition-all duration-300 border-2 ${tool.availableQuantity > 0  // ← CORRIGÉ
-                      ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
-                      : 'border-slate-200 opacity-50 cursor-not-allowed'
+                    ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
+                    : 'border-slate-200 opacity-50 cursor-not-allowed'
                     }`}
                 >
                   <div className="flex justify-between mb-2">
                     <div className="flex flex-col gap-1">
                       <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${tool.availableQuantity > 0
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-red-500 text-white'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-red-500 text-white'
                         }`}>
                         {tool.availableQuantity > 0 ? `${tool.availableQuantity} ${t('available')}` : t('unavailable')}
                       </span>
@@ -1915,8 +1958,8 @@ export default function App() {
                     }
                   }}
                   className={`flex items-center gap-6 p-6 rounded-2xl bg-white shadow-md hover:shadow-2xl transition-all duration-300 border-2 ${tool.availableQuantity > 0
-                      ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
-                      : 'border-slate-200 opacity-50 cursor-not-allowed'
+                    ? 'border-slate-200 hover:border-[#0f2b56] hover:-translate-y-2 cursor-pointer'
+                    : 'border-slate-200 opacity-50 cursor-not-allowed'
                     }`}
                 >
                   <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
@@ -1943,8 +1986,8 @@ export default function App() {
 
                   <div className="flex items-center gap-4 flex-shrink-0">
                     <span className={`px-5 py-2.5 rounded-full text-sm font-bold shadow-sm ${tool.availableQuantity > 0
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-red-500 text-white'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-red-500 text-white'
                       }`}>
                       {tool.availableQuantity > 0 ? `${tool.availableQuantity} ${t('available')}` : t('unavailable')}
                     </span>
@@ -2398,10 +2441,10 @@ export default function App() {
                           setCurrentScreen('confirm-borrow');
                         }}
                         className={`px-6 py-2 rounded-lg transition-all font-semibold ${borrow.status === 'overdue'
-                            ? 'bg-red-500 hover:bg-red-600 text-white'
-                            : borrow.isDueSoon
-                              ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          ? 'bg-red-500 hover:bg-red-600 text-white'
+                          : borrow.isDueSoon
+                            ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
                           }`}
                       >
                         {t('return')}
@@ -2485,10 +2528,10 @@ export default function App() {
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${borrow.status === 'returned' && !borrow.isLate
-                                ? 'bg-green-100 text-green-700'
-                                : borrow.isLate
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-blue-100 text-blue-700'
+                              ? 'bg-green-100 text-green-700'
+                              : borrow.isLate
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-blue-100 text-blue-700'
                               }`}>
                               {borrow.status === 'returned' && !borrow.isLate ? `✅ ${t('onTime')}` :
                                 borrow.isLate ? `❌ ${t('alertLate')} ${borrow.daysLate}j` : t('active')}
@@ -4042,8 +4085,8 @@ export default function App() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'student' ? 'bg-blue-100 text-blue-700' :
-                              user.role === 'professor' ? 'bg-purple-100 text-purple-700' :
-                                'bg-green-100 text-green-700'
+                            user.role === 'professor' ? 'bg-purple-100 text-purple-700' :
+                              'bg-green-100 text-green-700'
                             }`}>
                             {user.role === 'student' ? t('student') :
                               user.role === 'professor' ? t('professor') : t('technician')}
@@ -4238,13 +4281,28 @@ export default function App() {
 
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">Badge ID</label>
-                      <input
-                        type="text"
-                        name="badgeId"
-                        defaultValue={selectedUser?.badgeId}
-                        required
-                        className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          name="badgeId"
+                          id="badgeIdInput"
+                          defaultValue={selectedUser?.badgeId}
+                          required
+                          className="flex-1 px-4 py-3 rounded-lg border-2 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScannedBadgeId('');
+                            setBadgeScannerOpen(true);
+                          }}
+                          className="px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                          title="Scan Badge"
+                        >
+                          <Scan className="w-5 h-5" />
+                          Scan
+                        </button>
+                      </div>
                     </div>
 
                     <div>
@@ -4397,6 +4455,23 @@ export default function App() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Badge Scanner Modal for Admin */}
+          {badgeScannerOpen && (
+            <BadgeScanner
+              onBadgeScanned={async (uid: string) => {
+                // Update the badge ID input field
+                const badgeInput = document.getElementById('badgeIdInput') as HTMLInputElement;
+                if (badgeInput) {
+                  badgeInput.value = uid;
+                }
+                setScannedBadgeId(uid);
+                setBadgeScannerOpen(false);
+                return { success: true };
+              }}
+              onClose={() => setBadgeScannerOpen(false)}
+            />
           )}
         </div>
       </div>
@@ -4591,8 +4666,8 @@ export default function App() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${tool.availableQuantity > 0
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
                             }`}>
                             {tool.availableQuantity}
                           </span>

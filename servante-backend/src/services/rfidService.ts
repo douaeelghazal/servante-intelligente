@@ -1,6 +1,7 @@
 import { SerialPort } from 'serialport';
 import { ReadlineParser } from '@serialport/parser-readline';
 import { motorService } from './motorService';
+import { associateUidWithPendingScan } from '../controllers/badgeScanController';
 
 class RFIDService {
     private lastScannedBadge: { uid: string; timestamp: number } | null = null;
@@ -22,6 +23,8 @@ class RFIDService {
                         uid,
                         timestamp: Date.now()
                     };
+                    // Also push to any pending badge scan session (frontend polling)
+                    associateUidWithPendingScan(uid);
                 });
 
                 return true;

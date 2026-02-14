@@ -507,16 +507,12 @@ const fr = {
   waitForBeep: 'Attendez le bip sonore',
   automaticRegistration: 'Enregistrement automatique',
   retry: 'Réessayer',
-  close: 'Fermer',
 
   // Return Tool
   returnATool: 'Retourner un outil',
   myActiveBorrows: 'Mes emprunts actifs',
-  selectToolToReturn: 'Sélectionnez un outil à retourner',
   clickToContinue: 'Cliquez pour continuer',
   returnNow: 'Retourner',
-  category: 'Catégorie',
-  drawer: 'Tiroir',
   closeDrawerFinish: 'Fermer le tiroir et terminer',
   drawerIsOpen: 'Le tiroir {{drawer}} est ouvert!',
   returnSuccessful: 'Retour réussi!',
@@ -1045,16 +1041,12 @@ const en = {
   waitForBeep: 'Wait for the beep',
   automaticRegistration: 'Automatic registration',
   retry: 'Try again',
-  close: 'Close',
 
   // Return Tool
   returnATool: 'Return a Tool',
   myActiveBorrows: 'My Active Borrows',
-  selectToolToReturn: 'Select a tool to return',
   clickToContinue: 'Click to continue',
   returnNow: 'Return',
-  category: 'Category',
-  drawer: 'Drawer',
   closeDrawerFinish: 'Close Drawer & Finish',
   drawerIsOpen: 'Drawer {{drawer}} is open!',
   returnSuccessful: 'Return Successful!',
