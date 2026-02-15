@@ -11,7 +11,8 @@ declare global {
       admin?: {
         id: string;
         email: string;
-        name: string;
+        fullName: string;
+        role: string;
       };
     }
   }
@@ -70,26 +71,27 @@ export const protect = async (
       process.env.JWT_SECRET || 'default_secret'
     ) as { id: string };
 
-    // Récupérer l'admin depuis la base de données
-    const admin = await prisma.admin.findUnique({
+    // Récupérer l'utilisateur depuis la base de données
+    const user = await prisma.user.findUnique({
       where: { id: decoded.id },
       select: {
         id: true,
         email: true,
-        name: true
+        fullName: true,
+        role: true
       }
     });
 
-    if (!admin) {
+    if (!user) {
       res.status(401).json({
         success: false,
-        message: 'Non autorisé - Administrateur non trouvé'
+        message: 'Non autorisé - Utilisateur non trouvé'
       });
       return;
     }
 
-    // Attacher l'admin à la requête
-    req.admin = admin;
+    // Attacher l'utilisateur à la requête
+    req.admin = user;
 
     next();
   } catch (error) {

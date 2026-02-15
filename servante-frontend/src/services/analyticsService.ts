@@ -1,6 +1,6 @@
 import { API_BASE_URL } from './api';
 
-interface DashboardOverview {
+export interface DashboardOverview {
   totalTools: number;
   totalQuantity: number;
   availableQuantity: number;
@@ -9,7 +9,7 @@ interface DashboardOverview {
   availabilityRate: number;
 }
 
-interface ToolsAnalytics {
+export interface ToolsAnalytics {
   utilizationRate: number;
   averageBorrowDays: string;
   toolsNeedingMaintenance: number;
@@ -22,7 +22,7 @@ interface ToolsAnalytics {
   }>;
 }
 
-interface UsersAnalytics {
+export interface UsersAnalytics {
   totalUsers: number;
   activeUsers: number;
   onTimeReturnRate: number;
@@ -32,13 +32,13 @@ interface UsersAnalytics {
   }>;
 }
 
-interface BorrowsTrend {
+export interface BorrowsTrend {
   month: string;
   borrows: number;
   returns: number;
 }
 
-interface StockAlert {
+export interface StockAlert {
   id: string;
   name: string;
   category: string;
@@ -46,7 +46,7 @@ interface StockAlert {
   totalQuantity: number;
 }
 
-interface InventoryOverview {
+export interface InventoryOverview {
   totalStock: number;
   availableStock: number;
   borrowedStock: number;

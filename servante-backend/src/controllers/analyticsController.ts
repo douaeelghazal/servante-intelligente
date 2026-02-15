@@ -6,20 +6,12 @@ const prisma = new PrismaClient();
 // ✅ Tableau de bord général - Vue d'ensemble
 export const getDashboardOverview = async (req: Request, res: Response) => {
   try {
-    // Total des outils
+    // Total des outils avec quantités réelles
     const totalTools = await prisma.tool.findMany();
     const totalCount = totalTools.length;
     const totalQuantity = totalTools.reduce((sum, tool) => sum + tool.totalQuantity, 0);
-
-    // Outils disponibles
     const availableQuantity = totalTools.reduce((sum, tool) => sum + tool.availableQuantity, 0);
-
-    // Outils empruntés (nombre d'emprunts actifs)
-    const activeBorrows = await prisma.borrow.count({
-      where: {
-        status: 'ACTIVE'
-      }
-    });
+    const borrowedQuantity = totalTools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0);
 
     // Utilisateurs actifs ce mois
     const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30));
@@ -44,7 +36,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
         totalTools: totalCount,
         totalQuantity,
         availableQuantity,
-        borrowedQuantity: activeBorrows,
+        borrowedQuantity,
         activeUsers: activeUsers.length,
         availabilityRate
       }
@@ -75,12 +67,14 @@ export const getToolsAnalytics = async (req: Request, res: Response) => {
       };
     }
 
-    // Tous les outils
-    const tools = await prisma.tool.findMany();
+    // Tous les outils avec leur catégorie
+    const tools = await prisma.tool.findMany({
+      include: { category: true }
+    });
     const totalQuantity = tools.reduce((sum, tool) => sum + tool.totalQuantity, 0);
     const borrowedQuantity = tools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0);
 
-    // Taux d'utilisation global
+    // Taux d'utilisation global (basé sur le stock réel)
     const utilizationRate = totalQuantity > 0 ? Math.round((borrowedQuantity / totalQuantity) * 100) : 0;
 
     // Durée moyenne d'emprunt
@@ -114,42 +108,28 @@ export const getToolsAnalytics = async (req: Request, res: Response) => {
         borrowDate: {
           lt: thirtyDaysAgo
         }
-      },
-      include: {
-        tool: true
       }
     });
 
-    // Distribution par catégorie (filtré par mois si spécifié)
-    const borrowsByCategory = await prisma.borrow.findMany({
+    // Total emprunts pour le mois sélectionné
+    const totalBorrowsCount = await prisma.borrow.count({
       where: {
         ...(Object.keys(borrowDateFilter).length > 0 && { borrowDate: borrowDateFilter })
-      },
-      include: {
-        tool: true
       }
     });
 
-    // Grouper par catégorie
+    // Grouper par catégorie en utilisant les quantités réelles du stock
     const categoryMap = new Map<string, { borrowed: number; total: number; available: number }>();
-    
+
     for (const tool of tools) {
-      if (!categoryMap.has(tool.category)) {
-        categoryMap.set(tool.category, { borrowed: 0, total: 0, available: 0 });
+      const categoryName = tool.category.name;
+      if (!categoryMap.has(categoryName)) {
+        categoryMap.set(categoryName, { borrowed: 0, total: 0, available: 0 });
       }
-      const cat = categoryMap.get(tool.category)!;
+      const cat = categoryMap.get(categoryName)!;
       cat.total += tool.totalQuantity;
       cat.available += tool.availableQuantity;
-    }
-
-    // Compter les emprunts par catégorie pour le mois spécifié
-    let totalBorrowsCount = 0;
-    for (const borrow of borrowsByCategory) {
-      const cat = categoryMap.get(borrow.tool.category);
-      if (cat) {
-        cat.borrowed += 1;
-        totalBorrowsCount += 1;
-      }
+      cat.borrowed += tool.borrowedQuantity;
     }
 
     const byCategory = Array.from(categoryMap.entries()).map(([name, data]) => ({
@@ -166,6 +146,9 @@ export const getToolsAnalytics = async (req: Request, res: Response) => {
         averageBorrowDays: averageBorrowDays.toFixed(1),
         toolsNeedingMaintenance: toolsNeedingMaintenance.length,
         totalBorrows: totalBorrowsCount,
+        totalQuantity,
+        availableQuantity: tools.reduce((sum, tool) => sum + tool.availableQuantity, 0),
+        borrowedQuantity,
         byCategory
       }
     });

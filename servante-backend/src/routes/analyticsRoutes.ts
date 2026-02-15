@@ -16,12 +16,8 @@ router.get('/dashboard/overview', protect, async (req: Request, res: Response) =
     // Outils disponibles
     const availableQuantity = totalTools.reduce((sum, tool) => sum + tool.availableQuantity, 0);
 
-    // Outils empruntés (nombre d'emprunts actifs)
-    const activeBorrows = await prisma.borrow.count({
-      where: {
-        status: 'ACTIVE'
-      }
-    });
+    // Outils empruntés (quantité réelle du stock)
+    const borrowedQuantity = totalTools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0);
 
     // Utilisateurs actifs ce mois
     const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30));
@@ -46,7 +42,7 @@ router.get('/dashboard/overview', protect, async (req: Request, res: Response) =
         totalTools: totalCount,
         totalQuantity,
         availableQuantity,
-        borrowedQuantity: activeBorrows,
+        borrowedQuantity,
         activeUsers: activeUsers.length,
         availabilityRate
       }
@@ -77,8 +73,10 @@ router.get('/tools', protect, async (req: Request, res: Response) => {
       };
     }
 
-    // Tous les outils
-    const tools = await prisma.tool.findMany();
+    // Tous les outils avec catégorie
+    const tools = await prisma.tool.findMany({
+      include: { category: true }
+    });
     const totalQuantity = tools.reduce((sum, tool) => sum + tool.totalQuantity, 0);
     const borrowedQuantity = tools.reduce((sum, tool) => sum + tool.borrowedQuantity, 0);
 
@@ -117,12 +115,8 @@ router.get('/tools', protect, async (req: Request, res: Response) => {
     });
 
     // Analyses par catégorie
-    const toolsWithCategory = await prisma.tool.findMany({
-      include: { category: true }
-    });
-
     const categoryMap = new Map();
-    toolsWithCategory.forEach(tool => {
+    tools.forEach(tool => {
       const categoryName = tool.category.name;
       if (!categoryMap.has(categoryName)) {
         categoryMap.set(categoryName, {
