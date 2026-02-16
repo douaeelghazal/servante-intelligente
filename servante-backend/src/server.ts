@@ -1,47 +1,45 @@
-import express, { Application } from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+﻿import express, { Application } from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
 
-
-// Charger les variables d'environnement
 dotenv.config();
 
-// Importer les routes
-import authRoutes from './routes/authRoutes';
-import toolsRoutes from './routes/toolsRoutes';
-import borrowsRoutes from './routes/borrowsRoutes';
-import usersRoutes from './routes/usersRoutes';
-import uploadRoutes from './routes/uploadRoutes';
-import hardwareRoutes from './routes/hardwareRoutes';
-import categoriesRoutes from './routes/categoriesRoutes';
-import analyticsRoutes from './routes/analyticsRoutes';
+// Importer les routes existantes
+import authRoutes from "./routes/authRoutes";
+import toolsRoutes from "./routes/toolsRoutes";
+import borrowsRoutes from "./routes/borrowsRoutes";
+import usersRoutes from "./routes/usersRoutes";
+import uploadRoutes from "./routes/uploadRoutes";
+import hardwareRoutes from "./routes/hardwareRoutes";
+import categoriesRoutes from "./routes/categoriesRoutes";
+import analyticsRoutes from "./routes/analyticsRoutes";
+
+// ✨ NOUVEAU: Importer les routes chatbot
+import chatbotRoutes from "./routes/chatbotRoutes";
 
 // Importer les middlewares
-import { errorHandler, notFound } from './middleware/errorHandler';
+import { errorHandler, notFound } from "./middleware/errorHandler";
 
-// Initialiser Prisma
+// ✨ NOUVEAU: Importer le service ChromaDB
+import { chromaService } from "./services/chatbot/chromaService";
+
 const prisma = new PrismaClient();
-
-// Initialiser Express
 const app: Application = express();
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
-// CORS - Autoriser les requêtes du frontend
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true
 }));
 
-// Parser le body JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logger les requêtes (en développement)
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === "development") {
   app.use((req, res, next) => {
     console.log(`${req.method} ${req.path}`);
     next();
@@ -52,33 +50,32 @@ if (process.env.NODE_ENV === 'development') {
 // ROUTES
 // ============================================
 
-// Route de santé (health check)
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Serveur opérationnel',
+    message: "Serveur opérationnel",
     timestamp: new Date().toISOString()
   });
 });
 
-// Routes API
-app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoriesRoutes);
-app.use('/api/tools', toolsRoutes);
-app.use('/api/borrows', borrowsRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/hardware', hardwareRoutes);
-app.use('/api/analytics', analyticsRoutes);
+// Routes API existantes
+app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoriesRoutes);
+app.use("/api/tools", toolsRoutes);
+app.use("/api/borrows", borrowsRoutes);
+app.use("/api/users", usersRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/hardware", hardwareRoutes);
+app.use("/api/analytics", analyticsRoutes);
+
+// ✨ NOUVEAU: Routes chatbot
+app.use("/api/chatbot", chatbotRoutes);
 
 // ============================================
 // GESTION DES ERREURS
 // ============================================
 
-// Route non trouvée
 app.use(notFound);
-
-// Gestionnaire d'erreurs global
 app.use(errorHandler);
 
 // ============================================
@@ -87,45 +84,52 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-// Fonction pour démarrer le serveur
 const startServer = async () => {
   try {
-    // Tester la connexion à la base de données
+    // Tester la connexion à PostgreSQL
     await prisma.$connect();
-    console.log('✅ Connexion à PostgreSQL réussie');
+    console.log("✅ Connexion à PostgreSQL réussie");
+
+    // ✨ NOUVEAU: Initialiser ChromaDB
+    try {
+      await chromaService.initialize();
+      console.log("✅ ChromaDB initialisé avec succès");
+    } catch (chromaError) {
+      console.error("⚠️  Avertissement: ChromaDB n a pas pu être initialisé:", chromaError);
+      console.log("⚠️  Le serveur continuera sans le chatbot");
+      console.log("💡 Assurez-vous que ChromaDB est démarré: docker start chromadb");
+    }
 
     // Démarrer le serveur
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-      console.log(`📍 Environnement: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📍 Environnement: ${process.env.NODE_ENV || "development"}`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`🤖 Chatbot API: http://localhost:${PORT}/api/chatbot/health`);
     });
   } catch (error) {
-    console.error('❌ Erreur lors du démarrage du serveur:', error);
+    console.error("❌ Erreur lors du démarrage du serveur:", error);
     process.exit(1);
   }
 };
 
-// Gestion de l'arrêt gracieux
 const gracefulShutdown = async () => {
-  console.log('\n⏳ Arrêt du serveur en cours...');
+  console.log("\n⏳ Arrêt du serveur en cours...");
   
   try {
     await prisma.$disconnect();
-    console.log('✅ Déconnexion de la base de données réussie');
+    console.log("✅ Déconnexion de la base de données réussie");
     process.exit(0);
   } catch (error) {
-    console.error('❌ Erreur lors de la déconnexion:', error);
+    console.error("❌ Erreur lors de la déconnexion:", error);
     process.exit(1);
   }
 };
 
-// Écouter les signaux d'arrêt
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 
-// Démarrer le serveur
 startServer();
 
 export default app;
