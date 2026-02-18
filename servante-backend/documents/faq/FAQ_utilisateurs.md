@@ -58,8 +58,8 @@
 1. **Sur le site web** (recommandé)
    - Connectez-vous à votre compte
    - Allez dans "Catalogue des outils"
-   - Les outils disponibles sont marqués en VERT
-   - Les outils empruntés sont en ROUGE avec la date de retour prévue
+   - Les outils disponibles sont marqués 
+   - Les outils empruntés sont marqués avec la date de retour prévue
 
 2. **Sur la servante**
    - Scannez votre badge
@@ -278,16 +278,13 @@
 ## 📞 Contact et Support
 
 ### Qui contacter pour de l'aide ?
-**Support technique** : support-labo@exemple.fr
+**Support technique** : envoyez un email à notre équipe : Fablab.EMINES@emines.um6p.ma
 - Questions sur le fonctionnement du site web
 - Problèmes avec la servante
 - Bugs ou erreurs système
 
-**Administrateur** : admin-labo@exemple.fr
+**Administrateur** : envoyez un email à notre équipe : Fablab.EMINES@emines.um6p.ma
 - Gestion de compte et badges
 - Autorisations spéciales
 - Questions administratives
 
-**Assistance d'urgence** : +33 X XX XX XX XX
-- Uniquement pendant les heures d'ouverture
-- Pour les problèmes urgents avec la servante

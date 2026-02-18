@@ -195,7 +195,7 @@ Avez-vous déjà créé votre compte ?
 
 User: Non, pas encore
 Bot: Voici comment créer votre compte :
-1. Allez sur https://emprunt-labo.exemple.fr
+1. Allez sur la page de connexion
 2. Cliquez sur "S'inscrire"
 3. Utilisez votre email institutionnel (@université.fr)
 4. Créez un mot de passe sécurisé

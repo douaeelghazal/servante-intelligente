@@ -6,8 +6,7 @@
 
 **Horaires d'ouverture standard :**
 - **Lundi au Vendredi** : 8h00 - 18h00
-- **Samedi** : 9h00 - 12h00
-- **Dimanche et jours fériés** : Fermé
+- **Samedi , Dimanche et jours fériés** : Fermé
 
 **Accès à la servante d'outils :**
 - La servante est accessible uniquement pendant les horaires d'ouverture du laboratoire
@@ -15,8 +14,8 @@
 - En dehors de ces horaires, aucun emprunt n'est possible
 
 **Horaires spéciaux :**
-- **Périodes d'examens** : Ouverture prolongée jusqu'à 20h00 (lundi-vendredi)
-- **Vacances universitaires** : Horaires réduits (9h00-17h00, lundi-vendredi, fermé samedi)
+- **Périodes des soutenances** : Ouverture prolongée jusqu'à 20h00 (lundi-vendredi)
+- **Vacances universitaires** : Horaires réduits (9h00-17h00, lundi-vendredi, fermé samedi et dimanche)
 - **Jours fériés** : Fermé (vérifier le calendrier sur le site web)
 
 **Cas particuliers :**
@@ -59,7 +58,7 @@
 
 **Qui peut devenir Power User ?**
 - Personnel enseignant
-- Chercheurs et doctorants
+
 - Techniciens de laboratoire
 - Sur demande motivée à l'administrateur
 
@@ -577,7 +576,7 @@ Si l'investigation révèle que le dommage est dû à :
 ---
 
 #### Support par Email
-**Email :** support-labo@exemple.fr
+**Email :envoyez un email à notre équipe : Fablab.EMINES@emines.um6p.ma
 **Délai de réponse :** 24-48h ouvrées
 
 **Quand utiliser :**
@@ -670,16 +669,7 @@ Si l'investigation révèle que le dommage est dû à :
 - **Outils de précision** : Utilisation des outils de mesure numérique (1h)
   - Calendrier : Troisième jeudi du mois, 15h-16h
 
-#### Formations Individuelles (Sur rendez-vous)
-- Pour les outils spécialisés
-- Durée : 30-45 minutes
-- Gratuit pour la première session
-- Prise de rendez-vous : support-labo@exemple.fr
 
-**Certificats de formation :**
-- Délivrés à la fin de chaque formation
-- Enregistrés dans votre profil utilisateur
-- Certains outils de haute valeur peuvent nécessiter une formation obligatoire
 
 ---
 
@@ -694,8 +684,8 @@ Si l'investigation révèle que le dommage est dû à :
 - Formations de groupe
 
 **Frais possibles :**
-- **Badge perdu ou endommagé** : 5-10€
-- **Outil perdu** : Prix de remplacement + 50€ de frais administratifs
+- **Badge perdu ou endommagé** : 150dhs
+- **Outil perdu** : Prix de remplacement 
 - **Outil endommagé (par négligence)** : Coût de réparation ou remplacement partiel
 - **Retard excessif (>30 jours)** : Facturation du remplacement
 
@@ -816,7 +806,7 @@ Si l'investigation révèle que le dommage est dû à :
 **Oui, vos retours sont importants**
 
 **Procédure :**
-1. Email : reclamations-labo@exemple.fr
+1. Email :  Fablab.EMINES@emines.um6p.ma
 2. Objet : "RÉCLAMATION - [Brève description]"
 3. Décrivez la situation de manière détaillée
 4. Joignez tout document pertinent

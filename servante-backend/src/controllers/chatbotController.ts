@@ -1,8 +1,13 @@
 ﻿import { Request, Response } from "express";
 import { chromaService } from "../services/chatbot/chromaService";
 import fs from "fs/promises";
+import { generateAnswer, checkOllamaHealth } from '../services/chatbot/ragService';
 
 class ChatbotController {
+  // ============================================
+  // GESTION DES DOCUMENTS
+  // ============================================
+
   async uploadDocument(req: Request, res: Response): Promise<void> {
     try {
       if (!req.file) {
@@ -21,7 +26,6 @@ class ChatbotController {
       const content = await fs.readFile(filePath, "utf-8");
       const documentId = `doc_${Date.now()}_${filename}`;
 
-      // ✅ Correction: Ne pas inclure tags si vide
       const metadata: any = {
         title: title || originalname,
         filename: originalname,
@@ -30,7 +34,6 @@ class ChatbotController {
         category: category || "general",
       };
 
-      // Ajouter tags seulement si fourni
       if (tags && tags.trim()) {
         metadata.tags = tags.split(",").map((t: string) => t.trim());
       }
@@ -46,10 +49,10 @@ class ChatbotController {
         },
       });
     } catch (error) {
-      console.error("❌ Erreur lors de l upload:", error);
+      console.error("❌ Erreur lors de l'upload:", error);
       res.status(500).json({
         success: false,
-        error: "Erreur lors de l upload du document",
+        error: "Erreur lors de l'upload du document",
         details: error instanceof Error ? error.message : "Erreur inconnue",
       });
     }
@@ -154,6 +157,55 @@ class ChatbotController {
     }
   }
 
+  // ============================================
+  // CHAT RAG (NOUVEAU)
+  // ============================================
+
+  /**
+   * Endpoint principal du chatbot - Génère une réponse avec RAG
+   * POST /api/chatbot/chat
+   * Body: { query: string, topK?: number }
+   */
+  async chat(req: Request, res: Response): Promise<void> {
+    try {
+      const { query, topK } = req.body;
+
+      if (!query || typeof query !== 'string' || query.trim().length === 0) {
+        res.status(400).json({
+          success: false,
+          error: "Le paramètre 'query' est requis et doit être une chaîne non vide",
+        });
+        return;
+      }
+
+      console.log(`\n💬 Nouvelle question: "${query}"`);
+
+      const result = await generateAnswer(query, topK);
+
+      res.json(result);
+
+    } catch (error) {
+      console.error("❌ Erreur lors du chat:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur lors de la génération de la réponse",
+        details: error instanceof Error ? error.message : "Erreur inconnue",
+        answer: "Désolé, une erreur est survenue. Veuillez réessayer.",
+        sources: [],
+        metadata: {
+          query: req.body.query || '',
+          chunksUsed: 0,
+          model: 'unknown',
+          processingTime: 0,
+        },
+      });
+    }
+  }
+
+  // ============================================
+  // HEALTH CHECKS
+  // ============================================
+
   async getStats(req: Request, res: Response): Promise<void> {
     try {
       const count = await chromaService.countDocuments();
@@ -177,20 +229,46 @@ class ChatbotController {
 
   async healthCheck(req: Request, res: Response): Promise<void> {
     try {
-      const status = chromaService.getStatus();
+      const chromaStatus = chromaService.getStatus();
+      const ollamaHealth = await checkOllamaHealth();
 
       res.json({
         success: true,
         chromadb: {
-          status: status.initialized ? "connected" : "disconnected",
-          collection: status.collectionName,
+          status: chromaStatus.initialized ? "connected" : "disconnected",
+          collection: chromaStatus.collectionName,
           mode: "server",
+        },
+        ollama: {
+          status: ollamaHealth.available ? "connected" : "disconnected",
+          models: ollamaHealth.models || [],
+          ...(ollamaHealth.error && { error: ollamaHealth.error }),
+        },
+        rag: {
+          status: chromaStatus.initialized && ollamaHealth.available ? "ready" : "not_ready",
         },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
         error: "Erreur lors du healthcheck",
+        details: error instanceof Error ? error.message : "Erreur inconnue",
+      });
+    }
+  }
+
+  async checkOllama(req: Request, res: Response): Promise<void> {
+    try {
+      const health = await checkOllamaHealth();
+
+      res.json({
+        success: true,
+        ollama: health,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Erreur lors du check de santé Ollama",
         details: error instanceof Error ? error.message : "Erreur inconnue",
       });
     }
