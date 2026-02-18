@@ -368,6 +368,7 @@ export async function generateAnswerStream(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullAnswer = '';
+    let doneCalled = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -385,6 +386,7 @@ export async function generateAnswerStream(
             fullAnswer += data.response;
           }
           if (data.done) {
+            doneCalled = true;
             const sources = typedResults.map((r: SearchResult) => ({
               title: r.metadata.title || 'Sans titre',
               filename: r.metadata.filename || 'Inconnu',
@@ -409,6 +411,28 @@ export async function generateAnswerStream(
           // skip malformed line
         }
       }
+    }
+
+    // Le stream s'est fermé sans que Ollama envoie done:true — appel de secours
+    if (!doneCalled) {
+      const sources = typedResults.map((r: SearchResult) => ({
+        title: r.metadata.title || 'Sans titre',
+        filename: r.metadata.filename || 'Inconnu',
+        category: r.metadata.category || 'general',
+        chunkIndex: r.metadata.chunkIndex,
+        relevance: calculateRelevance(r.distance),
+      }));
+      onDone({
+        success: true,
+        answer: fullAnswer || 'Réponse incomplète reçue.',
+        sources,
+        metadata: {
+          query,
+          chunksUsed: typedResults.length,
+          model: OLLAMA_CONFIG.model,
+          processingTime: Date.now() - startTime,
+        },
+      });
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Erreur inconnue';

@@ -137,6 +137,16 @@ export function useChatbot() {
           )
         );
         setIsLoading(false);
+      } finally {
+        // Garantit que isStreaming est toujours désactivé même si onDone n'arrive pas
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId && m.isStreaming
+              ? { ...m, isStreaming: false }
+              : m
+          )
+        );
+        setIsLoading(false);
       }
     },
     [isLoading, scrollToBottom]

@@ -240,7 +240,11 @@ class ChatbotController {
       );
     } catch (error) {
       send({ type: 'error', error: error instanceof Error ? error.message : 'Erreur inconnue' });
-      res.end();
+    } finally {
+      // Garantit que la connexion SSE est toujours fermée
+      if (!res.writableEnded) {
+        res.end();
+      }
     }
   }
 
