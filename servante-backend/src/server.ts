@@ -18,6 +18,10 @@ import uploadRoutes from './routes/uploadRoutes';
 import hardwareRoutes from './routes/hardwareRoutes';
 import categoriesRoutes from './routes/categoriesRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import chatbotRoutes from './routes/chatbotRoutes';
+
+// Importer le service ChromaDB
+import { chromaService } from './services/chatbot/chromaService';
 
 // Importer les middlewares
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -73,6 +77,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/hardware', hardwareRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/rfid', rfidRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // ============================================
 // GESTION DES ERREURS
@@ -121,12 +126,23 @@ async function startServer() {
       console.log('   Le serveur démarre sans matériel. Branchez l\'Arduino et redémarrez.');
     }
 
+    // Initialiser ChromaDB
+    try {
+      await chromaService.initialize();
+      console.log('✅ ChromaDB initialisé avec succès');
+    } catch (chromaError) {
+      console.error('⚠️  Avertissement: ChromaDB n a pas pu être initialisé:', chromaError);
+      console.log('⚠️  Le serveur continuera sans le chatbot');
+      console.log('💡 Assurez-vous que ChromaDB est démarré: docker start chromadb');
+    }
+
     // Démarrer le serveur
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
       console.log(`📍 Environnement: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`🤖 Chatbot API: http://localhost:${PORT}/api/chatbot/health`);
     });
   } catch (error) {
     console.error('❌ Erreur lors du démarrage du serveur:', error);
