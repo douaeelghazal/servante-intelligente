@@ -72,19 +72,15 @@ const OLLAMA_CONFIG = {
 };
 
 const RAG_CONFIG = {
-  topK: 5,
-  maxContextLength: 4000,
-  temperature: 0.7,
-  systemPrompt: `Tu es un assistant virtuel expert qui aide les utilisateurs à trouver des informations dans la base de connaissances.
-
-INSTRUCTIONS IMPORTANTES:
-1. Réponds UNIQUEMENT en te basant sur les informations fournies dans le CONTEXTE ci-dessous
-2. Si l'information n'est pas dans le contexte, dis clairement "Je n'ai pas cette information dans ma base de connaissances"
-3. Sois précis, concis et professionnel
-4. Cite les sources quand c'est pertinent (ex: "Selon le guide utilisateur...")
-5. Structure ta réponse avec des listes à puces si nécessaire
-6. Réponds en français`,
+  topK: 3,
+  maxContextLength: 2000,
+  temperature: 0.3,
+  systemPrompt: `Tu es un assistant virtuel de la Servante Intelligente EMINES. Réponds de façon concise et directe en français, en te basant uniquement sur le CONTEXTE fourni. Si l'information est absente, dis-le brièvement.`,
 };
+
+// Cache du health check Ollama (30 secondes)
+let ollamaHealthCache: { available: boolean; timestamp: number } | null = null;
+const HEALTH_CACHE_TTL = 30_000;
 
 // ============================================
 // FONCTIONS UTILITAIRES
@@ -94,28 +90,27 @@ INSTRUCTIONS IMPORTANTES:
  * Vérifie la santé du service Ollama
  */
 export async function checkOllamaHealth(): Promise<OllamaHealthStatus> {
+  // Return cached result if still fresh
+  if (ollamaHealthCache && Date.now() - ollamaHealthCache.timestamp < HEALTH_CACHE_TTL) {
+    return { available: ollamaHealthCache.available, models: [] };
+  }
+
   try {
-    console.log('🔍 Vérification de la santé d\'Ollama...');
-    
     const response = await fetch(`${OLLAMA_CONFIG.baseUrl}/api/tags`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
     });
 
-    if (!response.ok) {
-      throw new Error(`Ollama API retourné le statut ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Ollama status ${response.status}`);
 
     const data = await response.json();
     const models = data.models?.map((m: any) => m.name) || [];
 
+    ollamaHealthCache = { available: true, timestamp: Date.now() };
     console.log(`✅ Ollama disponible avec ${models.length} modèle(s):`, models);
-
-    return {
-      available: true,
-      models,
-    };
+    return { available: true, models };
   } catch (error) {
+    ollamaHealthCache = { available: false, timestamp: Date.now() };
     console.error('❌ Ollama non disponible:', error);
     return {
       available: false,
@@ -159,7 +154,10 @@ async function callOllama(prompt: string): Promise<string> {
     stream: false,
     options: {
       temperature: RAG_CONFIG.temperature,
-      num_predict: 1000,
+      num_predict: 400,
+      num_ctx: 2048,
+      top_k: 20,
+      top_p: 0.9,
     },
   };
 
@@ -217,24 +215,7 @@ export async function generateAnswer(
     console.log(`📝 Question: "${query}"`);
     console.log(`🔢 Top-K: ${topK}`);
 
-    // 1. Vérifier qu'Ollama est disponible
-    const health = await checkOllamaHealth();
-    if (!health.available) {
-      return {
-        success: false,
-        answer: 'Le service de génération de réponses (Ollama) n\'est pas disponible. Veuillez vérifier qu\'Ollama est démarré.',
-        sources: [],
-        metadata: {
-          query,
-          chunksUsed: 0,
-          model: OLLAMA_CONFIG.model,
-          processingTime: Date.now() - startTime,
-        },
-        error: health.error,
-      };
-    }
-
-    // 2. Recherche sémantique dans ChromaDB
+    // 1. Recherche sémantique dans ChromaDB
     console.log(`\n📚 Recherche de chunks pertinents...`);
     const searchResults = await chromaService.searchDocuments(query, topK);
 
@@ -268,11 +249,10 @@ export async function generateAnswer(
       console.log(`   ${idx + 1}. ${result.metadata.title} (pertinence: ${relevance}%)`);
     });
 
-    // 3. Construire le prompt avec contexte
-    console.log(`\n📝 Construction du prompt RAG...`);
+    // 2. Construire le prompt avec contexte
     const prompt = buildPrompt(query, typedResults);
 
-    // 4. Générer la réponse avec Ollama
+    // 3. Générer la réponse avec Ollama
     const answer = await callOllama(prompt);
 
     // 5. Préparer les sources
@@ -321,12 +301,117 @@ export async function generateAnswer(
 }
 
 /**
- * Génère une réponse en streaming
+ * Génère une réponse en streaming réel (SSE)
+ * Appelle Ollama avec stream:true et transmet chaque token via onChunk
  */
 export async function generateAnswerStream(
   query: string,
   topK: number = RAG_CONFIG.topK,
-  onChunk: (chunk: string) => void
-): Promise<GenerateAnswerResult> {
-  return generateAnswer(query, topK);
+  onChunk: (token: string) => void,
+  onDone: (result: GenerateAnswerResult) => void,
+  onError: (err: string) => void
+): Promise<void> {
+  const startTime = Date.now();
+
+  try {
+    // 1. Recherche ChromaDB
+    const searchResults = await chromaService.searchDocuments(query, topK);
+
+    const noResults = !searchResults || searchResults.length === 0;
+    const fallbackAnswer =
+      'Je n\'ai trouvé aucune information pertinente dans ma base de connaissances.';
+
+    if (noResults) {
+      onChunk(fallbackAnswer);
+      onDone({
+        success: true,
+        answer: fallbackAnswer,
+        sources: [],
+        metadata: { query, chunksUsed: 0, model: OLLAMA_CONFIG.model, processingTime: Date.now() - startTime },
+      });
+      return;
+    }
+
+    const typedResults: SearchResult[] = searchResults.map((r: any) => ({
+      id: r.id,
+      content: r.content,
+      metadata: r.metadata,
+      distance: r.distance,
+    }));
+
+    // 2. Build prompt
+    const prompt = buildPrompt(query, typedResults);
+
+    // 3. Stream from Ollama
+    const response = await fetch(`${OLLAMA_CONFIG.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_CONFIG.model,
+        prompt,
+        stream: true,
+        options: {
+          temperature: RAG_CONFIG.temperature,
+          num_predict: 400,
+          num_ctx: 2048,
+          top_k: 20,
+          top_p: 0.9,
+        },
+      }),
+      signal: AbortSignal.timeout(OLLAMA_CONFIG.timeout),
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`Ollama stream error: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullAnswer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const text = decoder.decode(value, { stream: true });
+      // Ollama streams NDJSON — each line is a JSON object
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const data = JSON.parse(trimmed);
+          if (data.response) {
+            onChunk(data.response);
+            fullAnswer += data.response;
+          }
+          if (data.done) {
+            const sources = typedResults.map((r: SearchResult) => ({
+              title: r.metadata.title || 'Sans titre',
+              filename: r.metadata.filename || 'Inconnu',
+              category: r.metadata.category || 'general',
+              chunkIndex: r.metadata.chunkIndex,
+              relevance: calculateRelevance(r.distance),
+            }));
+            onDone({
+              success: true,
+              answer: fullAnswer,
+              sources,
+              metadata: {
+                query,
+                chunksUsed: typedResults.length,
+                model: OLLAMA_CONFIG.model,
+                processingTime: Date.now() - startTime,
+              },
+            });
+            return;
+          }
+        } catch {
+          // skip malformed line
+        }
+      }
+    }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Erreur inconnue';
+    onError(msg);
+  }
 }

@@ -81,6 +81,54 @@ export const chatbotService = {
     return response.data;
   },
 
+  /**
+   * Streaming chat — calls the SSE endpoint and forwards tokens in real-time
+   */
+  chatStream: async (
+    query: string,
+    onToken: (token: string) => void,
+    onDone: (result: ChatResponse) => void,
+    onError: (err: string) => void
+  ): Promise<void> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok || !response.body) {
+      onError(`Server error: ${response.status}`);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const text = decoder.decode(value, { stream: true });
+      // SSE lines start with "data: "
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(trimmed.slice(6));
+          if (data.type === 'token') onToken(data.content);
+          else if (data.type === 'done') onDone(data as ChatResponse);
+          else if (data.type === 'error') onError(data.error);
+        } catch {
+          // skip malformed line
+        }
+      }
+    }
+  },
+
   healthCheck: async (): Promise<HealthStatus> => {
     const response = await chatbotApi.get('/health');
     return response.data;

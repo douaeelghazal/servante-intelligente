@@ -18,5 +18,6 @@ router.get("/admin/documents/:id", chatbotController.getDocument);
 router.delete("/admin/documents/:id", chatbotController.deleteDocument);
 router.post("/search", chatbotController.searchDocuments);
 router.post("/chat", chatbotController.chat);
+router.post("/chat/stream", chatbotController.streamChat);
 
 export default router;

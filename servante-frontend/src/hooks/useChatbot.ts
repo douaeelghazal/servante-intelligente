@@ -13,6 +13,7 @@ export interface ChatMessage {
   metadata?: ChatMetadata;
   timestamp: Date;
   isError?: boolean;
+  isStreaming?: boolean;
 }
 
 export type OnlineStatus = 'checking' | 'online' | 'offline';
@@ -30,7 +31,7 @@ export function useChatbot() {
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 80);
+    }, 60);
   }, []);
 
   const checkHealth = useCallback(async () => {
@@ -47,44 +48,95 @@ export function useChatbot() {
     async (query: string) => {
       if (!query.trim() || isLoading) return;
 
+      // Add user message
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
         role: 'user',
         content: query.trim(),
         timestamp: new Date(),
       };
-
       setMessages((prev) => [...prev, userMessage]);
       setIsLoading(true);
       scrollToBottom();
 
+      // Add an empty assistant message immediately — will be filled via streaming
+      const assistantId = `assistant-${Date.now()}`;
+      const assistantMessage: ChatMessage = {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        isStreaming: true,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+
       try {
-        const response = await chatbotService.chat(query.trim());
+        await chatbotService.chatStream(
+          query.trim(),
 
-        const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response.answer || 'No response received.',
-          sources: response.sources?.length ? response.sources : undefined,
-          metadata: response.metadata,
-          timestamp: new Date(),
-          isError: !response.success,
-        };
+          // onToken — append each token to the message in real-time
+          (token: string) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, content: m.content + token }
+                  : m
+              )
+            );
+            scrollToBottom();
+          },
 
-        setMessages((prev) => [...prev, assistantMessage]);
+          // onDone — finalise with sources & metadata
+          (result) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      content: result.answer,
+                      sources: result.sources?.length ? result.sources : undefined,
+                      metadata: result.metadata,
+                      isStreaming: false,
+                    }
+                  : m
+              )
+            );
+            setIsLoading(false);
+            scrollToBottom();
+          },
+
+          // onError
+          (err: string) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      content: `Erreur : ${err}. Vérifiez que le serveur, ChromaDB et Ollama sont démarrés.`,
+                      isError: true,
+                      isStreaming: false,
+                    }
+                  : m
+              )
+            );
+            setIsLoading(false);
+          }
+        );
       } catch {
-        const errorMessage: ChatMessage = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          content:
-            'The assistant is currently unavailable. Please make sure ChromaDB and Ollama are running, then try again.',
-          timestamp: new Date(),
-          isError: true,
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      } finally {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content:
+                    'Service indisponible. Vérifiez que le serveur backend est démarré.',
+                  isError: true,
+                  isStreaming: false,
+                }
+              : m
+          )
+        );
         setIsLoading(false);
-        scrollToBottom();
       }
     },
     [isLoading, scrollToBottom]

@@ -1,7 +1,7 @@
 ﻿import { Request, Response } from "express";
 import { chromaService } from "../services/chatbot/chromaService";
 import fs from "fs/promises";
-import { generateAnswer, checkOllamaHealth } from '../services/chatbot/ragService';
+import { generateAnswer, generateAnswerStream, checkOllamaHealth } from '../services/chatbot/ragService';
 
 class ChatbotController {
   // ============================================
@@ -202,11 +202,53 @@ class ChatbotController {
     }
   }
 
+  /**
+   * Streaming endpoint - envoie les tokens au fur et à mesure (SSE)
+   * POST /api/chatbot/chat/stream
+   */
+  async streamChat(req: Request, res: Response): Promise<void> {
+    const { query, topK } = req.body;
+
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      res.status(400).json({ success: false, error: "Le paramètre 'query' est requis" });
+      return;
+    }
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.flushHeaders();
+
+    const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+    try {
+      await generateAnswerStream(
+        query.trim(),
+        topK,
+        (token: string) => send({ type: 'token', content: token }),
+        (result) => {
+          send({ type: 'done', ...result });
+          res.end();
+        },
+        (err: string) => {
+          send({ type: 'error', error: err });
+          res.end();
+        }
+      );
+    } catch (error) {
+      send({ type: 'error', error: error instanceof Error ? error.message : 'Erreur inconnue' });
+      res.end();
+    }
+  }
+
   // ============================================
   // HEALTH CHECKS
   // ============================================
 
-  async getStats(req: Request, res: Response): Promise<void> {
+  async getStats(_req: Request, res: Response): Promise<void> {
     try {
       const count = await chromaService.countDocuments();
 
@@ -227,7 +269,7 @@ class ChatbotController {
     }
   }
 
-  async healthCheck(req: Request, res: Response): Promise<void> {
+  async healthCheck(_req: Request, res: Response): Promise<void> {
     try {
       const chromaStatus = chromaService.getStatus();
       const ollamaHealth = await checkOllamaHealth();
@@ -257,7 +299,7 @@ class ChatbotController {
     }
   }
 
-  async checkOllama(req: Request, res: Response): Promise<void> {
+  async checkOllama(_req: Request, res: Response): Promise<void> {
     try {
       const health = await checkOllamaHealth();
 
